@@ -112,6 +112,16 @@ func main() {
 		defer stopS3()
 	}
 
+	// Start Aperture SSE event ingestion for real-time LLM metrics.
+	// This connects to Aperture's /api/events SSE stream and feeds
+	// metric events into MeterStore (webhooks are configured but not
+	// currently fired by Aperture).
+	sseIngester := NewApertureSSEIngester(cfg.ApertureURL, meterStore, nil)
+	if sseIngester.Configured() {
+		stopSSE := sseIngester.Start(context.Background())
+		defer stopSSE()
+	}
+
 	// Start audit S3 exporter if the S3 bucket is configured.
 	// Reuses the same S3 bucket as Aperture but writes to a separate prefix.
 	auditInterval := 5 * time.Minute
