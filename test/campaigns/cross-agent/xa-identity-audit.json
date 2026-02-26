@@ -26,5 +26,19 @@
     "juggler_setec_list",
     "juggler_setec_get",
     "juggler_campaign_status"
-  ]
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-identity-audit"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

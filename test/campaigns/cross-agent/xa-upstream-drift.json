@@ -38,5 +38,12 @@
       "org": "tinyland-inc",
       "repo": "hexstrike-ai"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-upstream-drift"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

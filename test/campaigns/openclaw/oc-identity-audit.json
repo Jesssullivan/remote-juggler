@@ -31,5 +31,12 @@
       "org": "tinyland-inc",
       "repo": "ironclaw"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/oc-identity-audit"
+  },
+  "guardrails": {
+    "maxDuration": "15m",
+    "readOnly": true
+  }
 }

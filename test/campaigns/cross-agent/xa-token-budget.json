@@ -24,5 +24,19 @@
     "juggler_setec_get",
     "juggler_setec_put",
     "juggler_campaign_status"
-  ]
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-token-budget"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

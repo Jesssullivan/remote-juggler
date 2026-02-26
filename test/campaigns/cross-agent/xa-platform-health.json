@@ -24,5 +24,19 @@
     "juggler_resolve_composite",
     "juggler_aperture_usage",
     "juggler_audit_log"
-  ]
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-platform-health"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

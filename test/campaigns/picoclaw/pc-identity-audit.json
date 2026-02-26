@@ -24,5 +24,12 @@
       "org": "tinyland-inc",
       "repo": "picoclaw"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/pc-identity-audit"
+  },
+  "guardrails": {
+    "maxDuration": "15m",
+    "readOnly": true
+  }
 }

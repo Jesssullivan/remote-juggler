@@ -23,5 +23,19 @@
     "github_create_pr",
     "juggler_setec_put",
     "juggler_campaign_status"
-  ]
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-provision-agent"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

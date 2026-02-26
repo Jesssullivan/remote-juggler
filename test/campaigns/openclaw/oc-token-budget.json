@@ -21,5 +21,19 @@
     "juggler_setec_get",
     "juggler_setec_put",
     "juggler_campaign_status"
-  ]
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "ironclaw"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/oc-token-budget"
+  },
+  "guardrails": {
+    "maxDuration": "15m",
+    "readOnly": true
+  }
 }

@@ -36,5 +36,12 @@
       "org": "tinyland-inc",
       "repo": "outbot-ci"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/oc-infra-review"
+  },
+  "guardrails": {
+    "maxDuration": "30m",
+    "readOnly": true
+  }
 }

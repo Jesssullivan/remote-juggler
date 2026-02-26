@@ -27,5 +27,12 @@
       "org": "tinyland-inc",
       "scope": "typescript-packages"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/oc-ts-package-audit"
+  },
+  "guardrails": {
+    "maxDuration": "20m",
+    "readOnly": true
+  }
 }

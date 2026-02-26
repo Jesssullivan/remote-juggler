@@ -25,5 +25,12 @@
       "org": "tinyland-inc",
       "scope": "typescript-packages"
     }
-  ]
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/pc-ts-package-scan"
+  },
+  "guardrails": {
+    "maxDuration": "20m",
+    "readOnly": true
+  }
 }
