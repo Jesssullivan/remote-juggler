@@ -53,17 +53,21 @@ resource "kubernetes_deployment" "picoclaw" {
           name  = "workspace-init"
           image = var.picoclaw_image
           command = ["/bin/sh", "-c", <<-EOT
-            if [ ! -f /workspace/AGENT.md ]; then
-              cp -r /workspace-defaults/* /workspace/ 2>/dev/null || true
-              echo "Workspace initialized from defaults"
-            else
-              echo "Workspace already exists, preserving state"
+            # Always sync workspace: add new files without overwriting existing.
+            cp -rn /workspace-defaults/* /workspace/ 2>/dev/null || true
+            echo "Workspace synced from defaults (new files added, existing preserved)"
+            # Update config.json if the image has a newer/larger config.
+            IMG_CFG="/app/tinyland/config.json"
+            if [ ! -f "$IMG_CFG" ]; then
+              IMG_CFG="/home/picoclaw/.picoclaw-defaults/config.json"
             fi
-            if [ ! -f /state/config.json ]; then
-              cp /home/picoclaw/.picoclaw/config.json /state/config.json 2>/dev/null || true
-              echo "State initialized with config.json"
+            IMG_SIZE=$(wc -c < "$IMG_CFG" 2>/dev/null || echo 0)
+            PVC_SIZE=$(wc -c < /state/config.json 2>/dev/null || echo 0)
+            if [ ! -f /state/config.json ] || [ "$IMG_SIZE" -gt "$PVC_SIZE" ]; then
+              cp "$IMG_CFG" /state/config.json 2>/dev/null || true
+              echo "State config updated (image=${IMG_SIZE}B > pvc=${PVC_SIZE}B)"
             else
-              echo "State already exists, preserving config"
+              echo "State config preserved (pvc=${PVC_SIZE}B >= image=${IMG_SIZE}B)"
             fi
           EOT
           ]

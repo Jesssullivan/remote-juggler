@@ -100,12 +100,9 @@ resource "kubernetes_deployment" "hexstrike" {
           name  = "workspace-init"
           image = var.hexstrike_ai_image
           command = ["/bin/sh", "-c", <<-EOT
-            if [ ! -f /workspace/AGENT.md ]; then
-              cp -r /workspace-defaults/* /workspace/ 2>/dev/null || true
-              echo "Workspace initialized from defaults"
-            else
-              echo "Workspace already exists, preserving state"
-            fi
+            # Always sync workspace: add new files without overwriting existing.
+            cp -rn /workspace-defaults/* /workspace/ 2>/dev/null || true
+            echo "Workspace synced from defaults (new files added, existing preserved)"
           EOT
           ]
           volume_mount {

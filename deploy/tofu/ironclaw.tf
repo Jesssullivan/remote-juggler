@@ -57,17 +57,22 @@ resource "kubernetes_deployment" "ironclaw" {
           name  = "workspace-init"
           image = var.ironclaw_image
           command = ["/bin/sh", "-c", <<-EOT
-            if [ ! -f /workspace/AGENTS.md ]; then
-              cp -r /workspace-defaults/* /workspace/ 2>/dev/null || true
-              echo "Workspace initialized from defaults"
+            # Always sync workspace: add new files without overwriting existing.
+            # cp -n (no-clobber) preserves user-modified files while adding new
+            # workspace files, skills, and memory templates from updated images.
+            cp -rn /workspace-defaults/* /workspace/ 2>/dev/null || true
+            echo "Workspace synced from defaults (new files added, existing preserved)"
+            # Update openclaw.json if the image has a newer/larger config.
+            # Source is /app/tinyland/openclaw.json (baked into Dockerfile),
+            # NOT /home/node/.openclaw/ which is the state PVC mount point.
+            IMG_CFG="/app/tinyland/openclaw.json"
+            IMG_SIZE=$(wc -c < "$IMG_CFG" 2>/dev/null || echo 0)
+            PVC_SIZE=$(wc -c < /state/openclaw.json 2>/dev/null || echo 0)
+            if [ ! -f /state/openclaw.json ] || [ "$IMG_SIZE" -gt "$PVC_SIZE" ]; then
+              cp "$IMG_CFG" /state/openclaw.json
+              echo "State config updated (image=${IMG_SIZE}B > pvc=${PVC_SIZE}B)"
             else
-              echo "Workspace already exists, preserving state"
-            fi
-            if [ ! -f /state/openclaw.json ]; then
-              cp /home/node/.openclaw/openclaw.json /state/openclaw.json 2>/dev/null || true
-              echo "State initialized with openclaw.json"
-            else
-              echo "State already exists, preserving config"
+              echo "State config preserved (pvc=${PVC_SIZE}B >= image=${IMG_SIZE}B)"
             fi
           EOT
           ]

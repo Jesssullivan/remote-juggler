@@ -136,13 +136,10 @@ func (b *HexstrikeBackend) dispatchTool(toolName, campaignID, runID string, targ
 
 	// Route tool to appropriate endpoint.
 	switch {
-	case toolName == "juggler_resolve_composite" || toolName == "juggler_setec_get" ||
-		toolName == "juggler_setec_list" || toolName == "juggler_setec_put" ||
-		toolName == "juggler_audit_log" || toolName == "juggler_campaign_status" ||
-		toolName == "juggler_aperture_usage":
-		// These are rj-gateway tools, not HexStrike tools.
-		// The campaign runner dispatches these directly via rj-gateway MCP.
-		// Return a no-op success so the trace records the intent.
+	case strings.HasPrefix(toolName, "juggler_") || strings.HasPrefix(toolName, "github_"):
+		// These are rj-gateway or Chapel subprocess tools, not HexStrike tools.
+		// HexStrike's native commands (credential_scan, tls_check, port_scan, etc.)
+		// never use these prefixes. Return a no-op success so the trace records intent.
 		return map[string]any{
 			"status": "skipped (gateway tool)",
 		}, nil

@@ -95,12 +95,6 @@
       "fetch": {
         "maxChars": 50000
       }
-    },
-    "subagents": {
-      "maxSpawnDepth": 2,
-      "maxChildrenPerAgent": 3,
-      "maxConcurrent": 4,
-      "model": "anthropic/claude-haiku-4-5-20251001"
     }
   },
   "logging": {

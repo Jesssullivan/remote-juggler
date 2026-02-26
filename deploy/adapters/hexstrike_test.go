@@ -159,6 +159,41 @@ func TestHexstrikeBackend_DispatchGatewayToolSkipped(t *testing.T) {
 	}
 }
 
+func TestHexstrikeBackend_DispatchAllPlatformToolsSkipped(t *testing.T) {
+	// All juggler_* and github_* tools must be skipped (gateway + Chapel tools).
+	b := NewHexstrikeBackend("http://localhost:1") // unreachable — should not be called
+	campaign := json.RawMessage(`{
+		"id": "hs-cred-exposure",
+		"name": "Credential Exposure Scan",
+		"process": ["scan"],
+		"tools": [
+			"juggler_resolve_composite",
+			"juggler_keys_search",
+			"juggler_setec_list",
+			"juggler_audit_log",
+			"juggler_campaign_status",
+			"juggler_setec_put",
+			"github_fetch"
+		]
+	}`)
+
+	result, err := b.Dispatch(campaign, "run-skip")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+	if result.Status != "success" {
+		t.Errorf("expected success, got %s: %s", result.Status, result.Error)
+	}
+	if result.ToolCalls != 7 {
+		t.Errorf("expected 7 tool traces, got %d", result.ToolCalls)
+	}
+	for _, tr := range result.ToolTrace {
+		if tr.Summary != "skipped (gateway tool)" {
+			t.Errorf("tool %s should be skipped, got: %s", tr.Tool, tr.Summary)
+		}
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
 		input  string
