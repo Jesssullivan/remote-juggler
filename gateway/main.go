@@ -116,7 +116,16 @@ func main() {
 	// This connects to Aperture's /api/events SSE stream and feeds
 	// metric events into MeterStore (webhooks are configured but not
 	// currently fired by Aperture).
-	sseIngester := NewApertureSSEIngester(cfg.ApertureURL, meterStore, nil)
+	// Use tsnet transport for MagicDNS resolution but with no timeout
+	// (SSE is a long-lived connection that must not time out).
+	var sseClient *http.Client
+	if setecHTTPClient != nil {
+		sseClient = &http.Client{
+			Transport: setecHTTPClient.Transport,
+			Timeout:   0,
+		}
+	}
+	sseIngester := NewApertureSSEIngester(cfg.ApertureURL, meterStore, sseClient)
 	if sseIngester.Configured() {
 		stopSSE := sseIngester.Start(context.Background())
 		defer stopSSE()
