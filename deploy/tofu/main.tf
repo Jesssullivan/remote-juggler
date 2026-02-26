@@ -61,10 +61,11 @@ locals {
   aperture_url         = "http://${var.aperture_hostname}"
   aperture_cluster_url = "http://aperture.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local"
 
-  # Direct Anthropic API -- bypass Aperture until roles are granted via http://ai/ui.
-  # Once Aperture roles are configured for the K8s egress proxy identity, change to:
-  #   anthropic_direct_url = local.aperture_cluster_url
-  anthropic_direct_url = "https://api.anthropic.com"
+  # Aperture AI gateway — identity-aware LLM routing and metering.
+  # Roles configured via PUT /api/config (tsnet bootstrap, 2026-02-26).
+  # Wildcard grants: all tailnet identities get admin + user + model access.
+  # Network-level ACL (aperture.dhall) restricts which devices can reach ai:*.
+  anthropic_direct_url = local.aperture_cluster_url
 
   # Gateway config JSON (mounted as secret)
   gateway_config = jsonencode({
