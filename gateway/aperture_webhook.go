@@ -41,14 +41,12 @@ type ApertureEvent struct {
 	ToolNames    []string        `json:"tool_names,omitempty"`
 	RequestID    string          `json:"request_id,omitempty"`
 	SessionID    string          `json:"session_id,omitempty"`
-	DedupeKey    string          `json:"dedupe_key,omitempty"`
 	Raw          json.RawMessage `json:"raw,omitempty"`
 }
 
 // apertureHookPayload is the real Aperture webhook format.
 type apertureHookPayload struct {
-	CaptureID string `json:"capture_id"` // Unique ID for deduplication across SSE + webhook.
-	Metadata  struct {
+	Metadata struct {
 		LoginName    string `json:"login_name"`
 		UserAgent    string `json:"user_agent"`
 		URL          string `json:"url"`
@@ -173,12 +171,6 @@ func (r *ApertureWebhookReceiver) tryApertureHook(body []byte) (ApertureEvent, b
 		return ApertureEvent{}, false
 	}
 
-	// Determine dedup key: prefer capture_id, fall back to session_id.
-	dedupeKey := payload.CaptureID
-	if dedupeKey == "" {
-		dedupeKey = payload.Metadata.SessionID
-	}
-
 	event := ApertureEvent{
 		Type:      "llm_call",
 		Model:     payload.Metadata.Model,
@@ -186,7 +178,6 @@ func (r *ApertureWebhookReceiver) tryApertureHook(body []byte) (ApertureEvent, b
 		Agent:     payload.Metadata.LoginName,
 		RequestID: payload.Metadata.RequestID,
 		SessionID: payload.Metadata.SessionID,
-		DedupeKey: dedupeKey,
 		Raw:       body,
 	}
 
@@ -206,8 +197,8 @@ func (r *ApertureWebhookReceiver) tryApertureHook(body []byte) (ApertureEvent, b
 		}
 	}
 
-	log.Printf("aperture webhook: parsed hook event model=%s agent=%s tools=%v input_tokens=%d output_tokens=%d",
-		event.Model, event.Agent, event.ToolNames, event.InputTokens, event.OutputTokens)
+	log.Printf("aperture webhook: parsed hook event model=%s agent=%s tools=%v input_tokens=%d output_tokens=%d session=%s",
+		event.Model, event.Agent, event.ToolNames, event.InputTokens, event.OutputTokens, event.SessionID)
 
 	return event, true
 }
@@ -231,6 +222,10 @@ func (r *ApertureWebhookReceiver) record(event ApertureEvent) {
 		if inputTok == 0 && outputTok == 0 && event.Tokens > 0 {
 			outputTok = event.Tokens
 		}
+		// Build dedup key matching SSE ingester format so the same LLM call
+		// reported by both sources is only counted once.
+		dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d:%d",
+			event.Model, event.Agent, inputTok, outputTok, event.DurationMs, event.Timestamp.Unix())
 		r.meter.Record(MeterRecord{
 			Agent:        event.Agent,
 			CampaignID:   event.CampaignID,
@@ -240,7 +235,7 @@ func (r *ApertureWebhookReceiver) record(event ApertureEvent) {
 			IsError:      event.Error != "",
 			InputTokens:  inputTok,
 			OutputTokens: outputTok,
-			DedupeKey:    event.DedupeKey,
+			DedupeKey:    dedupeKey,
 		})
 	}
 }

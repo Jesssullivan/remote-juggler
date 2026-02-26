@@ -165,6 +165,12 @@ func (s *ApertureSSEIngester) processMetric(data []byte) error {
 		agent = m.StableNodeID
 	}
 
+	// Build dedup key from fields shared between SSE and webhook sources.
+	// capture_id is SSE-specific, so use a composite of model + tokens + duration + timestamp
+	// to match across both sources reporting the same LLM call.
+	dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d:%d",
+		m.Model, agent, m.InputTokens, m.OutputTokens, m.DurationMs, m.Timestamp.Unix())
+
 	s.meter.Record(MeterRecord{
 		Agent:        agent,
 		ToolName:     fmt.Sprintf("llm:%s", m.Model),
@@ -173,7 +179,7 @@ func (s *ApertureSSEIngester) processMetric(data []byte) error {
 		IsError:      m.StatusCode >= 400,
 		InputTokens:  m.InputTokens,
 		OutputTokens: m.OutputTokens,
-		DedupeKey:    m.CaptureID,
+		DedupeKey:    dedupeKey,
 	})
 
 	return nil
