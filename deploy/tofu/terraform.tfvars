@@ -41,7 +41,7 @@ ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-fd9691b"
 # renovate: image
 picoclaw_image     = "ghcr.io/tinyland-inc/picoclaw:sha-89742bd"
 # renovate: image
-hexstrike_ai_image = "ghcr.io/tinyland-inc/hexstrike-ai:sha-a52da81"
+hexstrike_ai_image = "ghcr.io/tinyland-inc/hexstrike-ai:sha-26c4941"
 
 # Scale HexStrike from dormant to active
 hexstrike_replicas = 1
