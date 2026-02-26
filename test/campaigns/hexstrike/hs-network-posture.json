@@ -16,6 +16,9 @@
     }
   ],
   "tools": [
+    "network_posture",
+    "tls_check",
+    "port_scan",
     "juggler_resolve_composite",
     "juggler_setec_list",
     "juggler_audit_log",

@@ -70,6 +70,7 @@
     }
   ],
   "tools": [
+    "credential_scan",
     "juggler_resolve_composite",
     "juggler_keys_search",
     "juggler_setec_list",

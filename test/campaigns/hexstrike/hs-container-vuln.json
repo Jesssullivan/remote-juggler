@@ -19,6 +19,7 @@
     }
   ],
   "tools": [
+    "container_scan",
     "juggler_resolve_composite",
     "juggler_audit_log",
     "juggler_campaign_status",

@@ -28,6 +28,7 @@
     }
   ],
   "tools": [
+    "sops_rotation_check",
     "juggler_resolve_composite",
     "juggler_keys_sops_status",
     "juggler_audit_log",

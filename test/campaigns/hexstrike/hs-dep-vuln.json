@@ -73,6 +73,7 @@
     }
   ],
   "tools": [
+    "vuln_scan",
     "juggler_resolve_composite",
     "juggler_setec_get",
     "juggler_audit_log",
