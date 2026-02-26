@@ -291,8 +291,8 @@ func TestHexstrikeBackend_MCPCallerIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dispatch error: %v", err)
 	}
-	if receivedHeader != "campaign-runner@fuzzy-dev" {
-		t.Errorf("expected Tailscale-User-Login=campaign-runner@fuzzy-dev, got %q", receivedHeader)
+	if receivedHeader != "hexstrike-ai-agent@fuzzy-dev" {
+		t.Errorf("expected Tailscale-User-Login=hexstrike-ai-agent@fuzzy-dev, got %q", receivedHeader)
 	}
 }
 
