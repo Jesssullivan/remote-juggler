@@ -39,7 +39,7 @@ adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-65a69ef
 # renovate: image
 ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-fd9691b"
 # renovate: image
-picoclaw_image     = "ghcr.io/tinyland-inc/picoclaw:sha-89742bd"
+picoclaw_image     = "ghcr.io/tinyland-inc/picoclaw:sha-9dd6591"
 # renovate: image
 hexstrike_ai_image = "ghcr.io/tinyland-inc/hexstrike-ai:sha-26c4941"
 

@@ -9,10 +9,9 @@ import (
 	"time"
 )
 
-// PicoclawBackend translates campaign requests to PicoClaw's native HTTP API.
-// PicoClaw is a Go-based agent that exposes a model inference API on port 18790.
-// Since PicoClaw lacks native MCP support (issue #290), the adapter's tool proxy
-// registers rj-gateway tools in PicoClaw's native ToolRegistry format.
+// PicoclawBackend translates campaign requests to TinyClaw's HTTP dispatch API.
+// TinyClaw (formerly PicoClaw) exposes POST /api/dispatch for agent task execution,
+// GET /api/tools for tool listing, and GET /api/status for health/status info.
 type PicoclawBackend struct {
 	agentURL   string
 	gatewayURL string
@@ -24,7 +23,7 @@ func NewPicoclawBackend(agentURL, gatewayURL string) *PicoclawBackend {
 		agentURL:   agentURL,
 		gatewayURL: gatewayURL,
 		httpClient: &http.Client{
-			Timeout: 5 * time.Minute,
+			Timeout: 10 * time.Minute, // TinyClaw has 10m write deadline on dispatch
 		},
 	}
 }
@@ -32,19 +31,28 @@ func NewPicoclawBackend(agentURL, gatewayURL string) *PicoclawBackend {
 func (b *PicoclawBackend) Type() string { return "picoclaw" }
 
 func (b *PicoclawBackend) Health() error {
-	resp, err := b.httpClient.Get(b.agentURL + "/health")
+	resp, err := b.httpClient.Get(b.agentURL + "/api/status")
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		}
+	}
+	// Fall back to legacy /health endpoint.
+	resp, err = b.httpClient.Get(b.agentURL + "/health")
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("picoclaw health: %d", resp.StatusCode)
+		return fmt.Errorf("tinyclaw health: %d", resp.StatusCode)
 	}
 	return nil
 }
 
-// Dispatch sends a campaign to PicoClaw via its agent invocation API.
-// PicoClaw accepts tasks via POST /v1/chat/completions (OpenAI-compatible).
+// Dispatch sends a campaign to TinyClaw via POST /api/dispatch.
+// TinyClaw accepts tasks with {content, session_key, channel} and returns
+// {content, finish_reason, error}.
 func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
 	var c struct {
 		ID      string   `json:"id"`
@@ -64,21 +72,11 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	}
 	prompt += findingsInstruction
 
-	// PicoClaw uses OpenAI-compatible chat completions API.
-	payload := map[string]any{
-		"model": c.Model,
-		"messages": []map[string]string{
-			{"role": "user", "content": prompt},
-		},
-		"stream": false,
-	}
-
-	// If gateway URL is configured, inject tool definitions via the proxy.
-	if b.gatewayURL != "" {
-		tools, err := fetchGatewayTools(b.httpClient, b.gatewayURL)
-		if err == nil && len(tools) > 0 {
-			payload["tools"] = tools
-		}
+	// TinyClaw dispatch API.
+	payload := map[string]string{
+		"content":     prompt,
+		"session_key": runID,
+		"channel":     "campaign",
 	}
 
 	body, err := json.Marshal(payload)
@@ -86,7 +84,7 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		return nil, fmt.Errorf("marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, b.agentURL+"/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, b.agentURL+"/api/dispatch", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -94,7 +92,7 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	resp, err := b.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("picoclaw chat: %w", err)
+		return nil, fmt.Errorf("tinyclaw dispatch: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -106,57 +104,35 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	if resp.StatusCode != http.StatusOK {
 		return &LastResult{
 			Status: "failure",
-			Error:  fmt.Sprintf("picoclaw returned %d: %s", resp.StatusCode, string(respBody)),
+			Error:  fmt.Sprintf("tinyclaw returned %d: %s", resp.StatusCode, string(respBody)),
 		}, nil
 	}
 
-	// Parse OpenAI-compatible response.
-	var chatResp struct {
-		Choices []struct {
-			Message struct {
-				Content   string `json:"content"`
-				ToolCalls []struct {
-					Function struct {
-						Name string `json:"name"`
-					} `json:"function"`
-				} `json:"tool_calls"`
-			} `json:"message"`
-		} `json:"choices"`
-		Usage struct {
-			TotalTokens int `json:"total_tokens"`
-		} `json:"usage"`
+	// Parse TinyClaw dispatch response.
+	var dispatchResp struct {
+		Content      string `json:"content"`
+		FinishReason string `json:"finish_reason"`
+		Error        string `json:"error"`
 	}
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+	if err := json.Unmarshal(respBody, &dispatchResp); err != nil {
 		return &LastResult{
 			Status:    "success",
 			ToolCalls: 0,
 		}, nil
 	}
 
-	toolCalls := 0
-	var trace []ToolTrace
-	var messageContent string
-	for _, choice := range chatResp.Choices {
-		messageContent += choice.Message.Content
-		for _, tc := range choice.Message.ToolCalls {
-			toolCalls++
-			trace = append(trace, ToolTrace{
-				Timestamp: time.Now().UTC().Format(time.RFC3339),
-				Tool:      tc.Function.Name,
-				Summary:   "executed via picoclaw",
-			})
-		}
+	if dispatchResp.FinishReason == "error" || dispatchResp.Error != "" {
+		return &LastResult{
+			Status: "failure",
+			Error:  dispatchResp.Error,
+		}, nil
 	}
 
-	findings := extractFindings(messageContent, c.ID, runID)
+	findings := extractFindings(dispatchResp.Content, c.ID, runID)
 
 	return &LastResult{
 		Status:    "success",
-		ToolCalls: toolCalls,
-		ToolTrace: trace,
+		ToolCalls: 0, // TinyClaw doesn't report individual tool calls in dispatch response
 		Findings:  findings,
-		KPIs: map[string]any{
-			"total_tokens": chatResp.Usage.TotalTokens,
-		},
 	}, nil
 }

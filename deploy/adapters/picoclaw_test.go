@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,9 @@ func TestPicoclawBackend_Type(t *testing.T) {
 
 func TestPicoclawBackend_Health(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
+		if r.URL.Path == "/api/status" {
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		} else if r.URL.Path == "/health" {
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		}
 	}))
@@ -28,18 +31,46 @@ func TestPicoclawBackend_Health(t *testing.T) {
 	}
 }
 
+func TestPicoclawBackend_HealthFallback(t *testing.T) {
+	// Server only supports legacy /health, not /api/status.
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		} else {
+			http.NotFound(w, r)
+		}
+	}))
+	defer agent.Close()
+
+	b := NewPicoclawBackend(agent.URL, "")
+	if err := b.Health(); err != nil {
+		t.Fatalf("health fallback error: %v", err)
+	}
+}
+
 func TestPicoclawBackend_Dispatch(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
-			"choices": []map[string]any{
-				{
-					"message": map[string]any{
-						"content":    "scan complete",
-						"tool_calls": []any{},
-					},
-				},
-			},
-			"usage": map[string]int{"total_tokens": 150},
+		if r.URL.Path != "/api/dispatch" {
+			t.Errorf("expected /api/dispatch, got %s", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		// Verify request format.
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]string
+		json.Unmarshal(body, &req)
+		if req["content"] == "" {
+			t.Error("expected non-empty content")
+		}
+		if req["session_key"] == "" {
+			t.Error("expected non-empty session_key")
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "scan complete, no issues found",
+			"finish_reason": "stop",
 		})
 	}))
 	defer agent.Close()
@@ -52,10 +83,7 @@ func TestPicoclawBackend_Dispatch(t *testing.T) {
 		t.Fatalf("dispatch error: %v", err)
 	}
 	if result.Status != "success" {
-		t.Errorf("expected success, got %s", result.Status)
-	}
-	if v, ok := result.KPIs["total_tokens"]; !ok || v.(int) != 150 {
-		t.Errorf("expected total_tokens=150, got %v", result.KPIs["total_tokens"])
+		t.Errorf("expected success, got %s (error: %s)", result.Status, result.Error)
 	}
 }
 
@@ -63,16 +91,9 @@ func TestPicoclawBackend_DispatchWithFindings(t *testing.T) {
 	findingsJSON := `__findings__[{"title":"Dead code in utils.go","body":"Function unused","severity":"low","labels":["cleanup"],"fingerprint":"dead-code-utils-001"}]__end_findings__`
 
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
-			"choices": []map[string]any{
-				{
-					"message": map[string]any{
-						"content":    "Scan complete.\n" + findingsJSON,
-						"tool_calls": []any{},
-					},
-				},
-			},
-			"usage": map[string]int{"total_tokens": 200},
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "Scan complete.\n" + findingsJSON,
+			"finish_reason": "stop",
 		})
 	}))
 	defer agent.Close()
@@ -99,38 +120,45 @@ func TestPicoclawBackend_DispatchWithFindings(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_DispatchWithGatewayTools(t *testing.T) {
-	// Mock gateway that returns tool list.
-	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
-			"result": map[string]any{
-				"tools": []map[string]any{
-					{"name": "juggler_status", "description": "check status"},
-				},
-			},
-		})
-	}))
-	defer gateway.Close()
-
-	// Mock agent.
+func TestPicoclawBackend_DispatchError(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{
-			"choices": []map[string]any{
-				{"message": map[string]any{"content": "done"}},
-			},
-			"usage": map[string]int{"total_tokens": 100},
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "",
+			"finish_reason": "error",
+			"error":         "tool execution failed",
 		})
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, gateway.URL)
-	campaign := json.RawMessage(`{"id":"test","name":"test","process":["check"],"tools":["juggler_status"]}`)
+	b := NewPicoclawBackend(agent.URL, "")
+	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
 
 	result, err := b.Dispatch(campaign, "run-1")
 	if err != nil {
 		t.Fatalf("dispatch error: %v", err)
 	}
-	if result.Status != "success" {
-		t.Errorf("expected success, got %s", result.Status)
+	if result.Status != "failure" {
+		t.Errorf("expected failure, got %s", result.Status)
+	}
+	if result.Error != "tool execution failed" {
+		t.Errorf("expected error message, got %s", result.Error)
+	}
+}
+
+func TestPicoclawBackend_DispatchHTTPError(t *testing.T) {
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}))
+	defer agent.Close()
+
+	b := NewPicoclawBackend(agent.URL, "")
+	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
+
+	result, err := b.Dispatch(campaign, "run-1")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+	if result.Status != "failure" {
+		t.Errorf("expected failure, got %s", result.Status)
 	}
 }
