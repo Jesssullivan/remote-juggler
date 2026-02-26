@@ -21,6 +21,7 @@ type MeterRecord struct {
 	IsError       bool      `json:"is_error,omitempty"`
 	InputTokens   int       `json:"input_tokens,omitempty"`
 	OutputTokens  int       `json:"output_tokens,omitempty"`
+	DedupeKey     string    `json:"dedupe_key,omitempty"` // Optional key for deduplication (e.g. Aperture capture_id).
 }
 
 // MeterBucket aggregates metering data per (agent, campaign_id) pair.
@@ -43,6 +44,11 @@ type MeterStore struct {
 	mu      sync.RWMutex
 	buckets map[string]*MeterBucket // key: "agent:campaign_id"
 
+	// Deduplication: track recently-seen dedupe keys to avoid double-counting
+	// when multiple sources (webhook + SSE) report the same event.
+	seen     map[string]time.Time // dedupe_key -> first seen time
+	seenSize int                  // max entries before eviction
+
 	// flushCallback is called during Flush() to persist aggregated data.
 	flushCallback func(ctx context.Context, buckets []*MeterBucket) error
 }
@@ -50,7 +56,9 @@ type MeterStore struct {
 // NewMeterStore creates a new MeterStore.
 func NewMeterStore() *MeterStore {
 	return &MeterStore{
-		buckets: make(map[string]*MeterBucket),
+		buckets:  make(map[string]*MeterBucket),
+		seen:     make(map[string]time.Time),
+		seenSize: 1000,
 	}
 }
 
@@ -74,6 +82,18 @@ func (m *MeterStore) Record(rec MeterRecord) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Deduplicate: if this record has a dedupe key we've already seen, skip it.
+	if rec.DedupeKey != "" {
+		if _, dup := m.seen[rec.DedupeKey]; dup {
+			return
+		}
+		m.seen[rec.DedupeKey] = time.Now()
+		// Evict oldest entries when the seen set gets too large.
+		if len(m.seen) > m.seenSize {
+			m.evictSeen()
+		}
+	}
+
 	key := bucketKey(rec.Agent, rec.CampaignID)
 	bucket, ok := m.buckets[key]
 	if !ok {
@@ -94,6 +114,29 @@ func (m *MeterStore) Record(rec MeterRecord) {
 	bucket.LastSeen = rec.Timestamp
 	if rec.IsError {
 		bucket.ErrorCount++
+	}
+}
+
+// evictSeen removes the oldest half of the seen entries. Must be called with mu held.
+func (m *MeterStore) evictSeen() {
+	// Find the median timestamp and remove everything older.
+	cutoff := time.Now().Add(-10 * time.Minute)
+	for k, t := range m.seen {
+		if t.Before(cutoff) {
+			delete(m.seen, k)
+		}
+	}
+	// If still too large (all entries are recent), remove oldest half.
+	if len(m.seen) > m.seenSize {
+		count := 0
+		target := len(m.seen) / 2
+		for k := range m.seen {
+			delete(m.seen, k)
+			count++
+			if count >= target {
+				break
+			}
+		}
 	}
 }
 

@@ -317,3 +317,78 @@ func TestBucketKeyDefault(t *testing.T) {
 		t.Errorf("bucketKey = %q, want 'unknown:campaign'", key)
 	}
 }
+
+func TestMeterStoreDeduplication(t *testing.T) {
+	store := NewMeterStore()
+	now := time.Now()
+
+	// Record same event twice with the same dedupe key.
+	for i := 0; i < 2; i++ {
+		store.Record(MeterRecord{
+			Agent:        "agent",
+			ToolName:     "llm:claude-haiku-4-5-20251001",
+			InputTokens:  100,
+			OutputTokens: 50,
+			Timestamp:    now,
+			DedupeKey:    "capture-abc-123",
+		})
+	}
+
+	buckets := store.Query("agent", "")
+	if len(buckets) != 1 {
+		t.Fatalf("expected 1 bucket, got %d", len(buckets))
+	}
+	// Should count only once due to dedup.
+	if buckets[0].ToolCalls != 1 {
+		t.Errorf("ToolCalls = %d, want 1 (dedup should prevent double-count)", buckets[0].ToolCalls)
+	}
+	if buckets[0].InputTokens != 100 {
+		t.Errorf("InputTokens = %d, want 100", buckets[0].InputTokens)
+	}
+}
+
+func TestMeterStoreDeduplicationDifferentKeys(t *testing.T) {
+	store := NewMeterStore()
+	now := time.Now()
+
+	store.Record(MeterRecord{
+		Agent: "agent", ToolName: "llm:haiku", InputTokens: 100,
+		Timestamp: now, DedupeKey: "capture-1",
+	})
+	store.Record(MeterRecord{
+		Agent: "agent", ToolName: "llm:haiku", InputTokens: 200,
+		Timestamp: now, DedupeKey: "capture-2",
+	})
+
+	buckets := store.Query("agent", "")
+	if len(buckets) != 1 {
+		t.Fatalf("expected 1 bucket, got %d", len(buckets))
+	}
+	if buckets[0].ToolCalls != 2 {
+		t.Errorf("ToolCalls = %d, want 2 (different keys should both count)", buckets[0].ToolCalls)
+	}
+	if buckets[0].InputTokens != 300 {
+		t.Errorf("InputTokens = %d, want 300", buckets[0].InputTokens)
+	}
+}
+
+func TestMeterStoreNoDedupeKeyAlwaysRecords(t *testing.T) {
+	store := NewMeterStore()
+	now := time.Now()
+
+	// Records without DedupeKey should always be counted.
+	for i := 0; i < 3; i++ {
+		store.Record(MeterRecord{
+			Agent: "agent", ToolName: "mcp:tool", InputTokens: 10,
+			Timestamp: now,
+		})
+	}
+
+	buckets := store.Query("agent", "")
+	if len(buckets) != 1 {
+		t.Fatalf("expected 1 bucket, got %d", len(buckets))
+	}
+	if buckets[0].ToolCalls != 3 {
+		t.Errorf("ToolCalls = %d, want 3 (no dedupe key = always record)", buckets[0].ToolCalls)
+	}
+}

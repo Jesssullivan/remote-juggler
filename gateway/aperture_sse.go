@@ -129,7 +129,7 @@ func (s *ApertureSSEIngester) connect(ctx context.Context) error {
 				log.Printf("aperture-sse: parse metric: %v", err)
 			} else {
 				ingested++
-				if ingested%10 == 0 {
+				if ingested == 1 || ingested%10 == 0 {
 					log.Printf("aperture-sse: ingested %d metrics", ingested)
 				}
 			}
@@ -173,6 +173,7 @@ func (s *ApertureSSEIngester) processMetric(data []byte) error {
 		IsError:      m.StatusCode >= 400,
 		InputTokens:  m.InputTokens,
 		OutputTokens: m.OutputTokens,
+		DedupeKey:    m.CaptureID,
 	})
 
 	return nil
