@@ -2,13 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestHexstrikeBackend_Type(t *testing.T) {
-	b := NewHexstrikeBackend("http://localhost:8888")
+	b := NewHexstrikeBackend("http://localhost:9080")
 	if b.Type() != "hexstrike-ai" {
 		t.Errorf("expected hexstrike-ai, got %s", b.Type())
 	}
@@ -28,17 +29,35 @@ func TestHexstrikeBackend_Health(t *testing.T) {
 	}
 }
 
-func TestHexstrikeBackend_Dispatch(t *testing.T) {
-	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/command" && r.Method == http.MethodPost {
-			json.NewEncoder(w).Encode(map[string]any{
-				"success":        true,
-				"stdout":         "no credentials found in 15 files",
-				"stderr":         "",
-				"execution_time": 2.5,
-			})
+// mcpToolHandler creates a mock HexStrike MCP server that responds to tools/call.
+func mcpToolHandler(toolResult string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mcp" || r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
 		}
-	}))
+		body, _ := io.ReadAll(r.Body)
+		var req struct {
+			Method string `json:"method"`
+			Params struct {
+				Name string `json:"name"`
+			} `json:"params"`
+		}
+		json.Unmarshal(body, &req)
+
+		result, _ := json.Marshal(map[string]any{
+			"content": []map[string]string{
+				{"type": "text", "text": toolResult},
+			},
+		})
+		json.NewEncoder(w).Encode(map[string]any{
+			"result": json.RawMessage(result),
+		})
+	}
+}
+
+func TestHexstrikeBackend_Dispatch(t *testing.T) {
+	agent := httptest.NewServer(mcpToolHandler("no credentials found in 15 files"))
 	defer agent.Close()
 
 	b := NewHexstrikeBackend(agent.URL)
@@ -68,15 +87,7 @@ func TestHexstrikeBackend_Dispatch(t *testing.T) {
 func TestHexstrikeBackend_DispatchWithFindings(t *testing.T) {
 	findingsJSON := `__findings__[{"title":"Exposed AWS key","body":"Found hardcoded credential","severity":"critical","labels":["security","credentials"],"fingerprint":"aws-key-main-001"}]__end_findings__`
 
-	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/command" && r.Method == http.MethodPost {
-			json.NewEncoder(w).Encode(map[string]any{
-				"success": true,
-				"stdout":  "Scan results:\n" + findingsJSON,
-				"stderr":  "",
-			})
-		}
-	}))
+	agent := httptest.NewServer(mcpToolHandler("Scan results:\n" + findingsJSON))
 	defer agent.Close()
 
 	b := NewHexstrikeBackend(agent.URL)
@@ -110,11 +121,11 @@ func TestHexstrikeBackend_DispatchWithFindings(t *testing.T) {
 	}
 }
 
-func TestHexstrikeBackend_DispatchCommandError(t *testing.T) {
+func TestHexstrikeBackend_DispatchMCPError(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/command" {
+		if r.URL.Path == "/mcp" {
 			json.NewEncoder(w).Encode(map[string]any{
-				"error": "command not found: nonexistent_tool",
+				"error": "tool not found: nonexistent_tool",
 			})
 		}
 	}))
@@ -191,6 +202,61 @@ func TestHexstrikeBackend_DispatchAllPlatformToolsSkipped(t *testing.T) {
 		if tr.Summary != "skipped (gateway tool)" {
 			t.Errorf("tool %s should be skipped, got: %s", tr.Tool, tr.Summary)
 		}
+	}
+}
+
+func TestHexstrikeBackend_MCPToolCallArgs(t *testing.T) {
+	// Verify that target repos and campaign context are passed as MCP tool arguments.
+	var receivedArgs map[string]any
+
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/mcp" {
+			body, _ := io.ReadAll(r.Body)
+			var req struct {
+				Method string `json:"method"`
+				Params struct {
+					Name string         `json:"name"`
+					Args map[string]any `json:"arguments"`
+				} `json:"params"`
+			}
+			json.Unmarshal(body, &req)
+			receivedArgs = req.Params.Args
+
+			result, _ := json.Marshal(map[string]any{
+				"content": []map[string]string{
+					{"type": "text", "text": "scan complete"},
+				},
+			})
+			json.NewEncoder(w).Encode(map[string]any{
+				"result": json.RawMessage(result),
+			})
+		}
+	}))
+	defer agent.Close()
+
+	b := NewHexstrikeBackend(agent.URL)
+	campaign := json.RawMessage(`{
+		"id": "hs-test",
+		"name": "Test",
+		"process": ["scan"],
+		"tools": ["port_scan"],
+		"targets": [{"org":"tinyland-inc","repo":"remote-juggler"}]
+	}`)
+
+	_, err := b.Dispatch(campaign, "run-args")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+
+	if receivedArgs["campaign_id"] != "hs-test" {
+		t.Errorf("expected campaign_id=hs-test, got %v", receivedArgs["campaign_id"])
+	}
+	if receivedArgs["run_id"] != "run-args" {
+		t.Errorf("expected run_id=run-args, got %v", receivedArgs["run_id"])
+	}
+	targets, ok := receivedArgs["targets"].([]any)
+	if !ok || len(targets) != 1 {
+		t.Errorf("expected 1 target, got %v", receivedArgs["targets"])
 	}
 }
 

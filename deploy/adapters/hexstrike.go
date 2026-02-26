@@ -10,18 +10,14 @@ import (
 	"time"
 )
 
-// HexstrikeBackend translates campaign requests to HexStrike-AI's Flask REST API.
-// HexStrike exposes security tools via Flask on port 8888 with endpoints:
-//   - GET  /health                                   — comprehensive tool availability check
-//   - POST /api/command                              — execute arbitrary security commands
-//   - POST /api/intelligence/smart-scan              — AI-driven scan with tool selection
-//   - POST /api/error-handling/execute-with-recovery — command execution with retry/recovery
-//   - POST /api/intelligence/analyze-target          — target profiling
-//   - POST /api/files/*                              — file operations
+// HexstrikeBackend translates campaign requests to HexStrike-AI's MCP server.
+// HexStrike v2 exposes 42 security tools via a Go gateway + OCaml MCP server:
+//   - POST /mcp       — JSON-RPC MCP endpoint (tools/call, tools/list)
+//   - GET  /health    — gateway health check
+//   - GET  /metrics   — Prometheus metrics
 //
-// Note: HexStrike also has a FastMCP server (hexstrike_mcp.py) that exposes
-// tools via stdio transport, but the adapter uses the Flask REST API directly
-// since it's HTTP-native and doesn't require a stdio bridge.
+// The gateway wraps the F*-verified OCaml MCP binary (hexstrike-mcp) and
+// provides policy enforcement, credential brokering, and Aperture metering.
 type HexstrikeBackend struct {
 	agentURL   string
 	httpClient *http.Client
@@ -50,10 +46,9 @@ func (b *HexstrikeBackend) Health() error {
 	return nil
 }
 
-// Dispatch sends a campaign to HexStrike via its Flask REST API.
-// For campaigns with targets, it uses /api/intelligence/smart-scan for
-// AI-driven tool selection and parallel execution. For campaigns that
-// specify individual MCP tools, it maps them to /api/command calls.
+// Dispatch sends a campaign to HexStrike via its MCP server.
+// For each tool in the campaign, it sends a tools/call JSON-RPC request
+// to POST /mcp on the HexStrike gateway.
 func (b *HexstrikeBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
 	var c struct {
 		ID      string   `json:"id"`
@@ -73,12 +68,36 @@ func (b *HexstrikeBackend) Dispatch(campaign json.RawMessage, runID string) (*La
 	var lastErr string
 	var accumulatedOutput strings.Builder
 
-	// For each tool in the campaign, dispatch via the appropriate REST endpoint.
+	// Build target list for tool arguments.
+	var targetRepos []string
+	for _, t := range c.Targets {
+		targetRepos = append(targetRepos, fmt.Sprintf("%s/%s", t.Org, t.Repo))
+	}
+
+	// For each tool in the campaign, dispatch via MCP.
 	for _, toolName := range c.Tools {
 		ts := time.Now().UTC().Format(time.RFC3339)
 
-		// Map MCP-style tool names to HexStrike REST API calls.
-		result, err := b.dispatchTool(toolName, c.ID, runID, c.Targets)
+		// Skip gateway/Chapel tools — those are for rj-gateway, not HexStrike.
+		if strings.HasPrefix(toolName, "juggler_") || strings.HasPrefix(toolName, "github_") {
+			trace = append(trace, ToolTrace{
+				Timestamp: ts,
+				Tool:      toolName,
+				Summary:   "skipped (gateway tool)",
+			})
+			continue
+		}
+
+		// Build MCP tool arguments.
+		args := map[string]any{
+			"campaign_id": c.ID,
+			"run_id":      runID,
+		}
+		if len(targetRepos) > 0 {
+			args["targets"] = targetRepos
+		}
+
+		result, err := b.callMCPTool(toolName, args)
 		if err != nil {
 			trace = append(trace, ToolTrace{
 				Timestamp: ts,
@@ -91,12 +110,10 @@ func (b *HexstrikeBackend) Dispatch(campaign json.RawMessage, runID string) (*La
 		}
 
 		summary := "ok"
-		if s, ok := result["stdout"].(string); ok && s != "" {
-			summary = truncate(s, 200)
-			accumulatedOutput.WriteString(s)
+		if result != "" {
+			summary = truncate(result, 200)
+			accumulatedOutput.WriteString(result)
 			accumulatedOutput.WriteString("\n")
-		} else if s, ok := result["status"].(string); ok {
-			summary = s
 		}
 
 		trace = append(trace, ToolTrace{
@@ -122,79 +139,79 @@ func (b *HexstrikeBackend) Dispatch(campaign json.RawMessage, runID string) (*La
 	}, nil
 }
 
-// dispatchTool routes a tool name to the appropriate HexStrike REST endpoint.
-func (b *HexstrikeBackend) dispatchTool(toolName, campaignID, runID string, targets []struct {
-	Org  string `json:"org"`
-	Repo string `json:"repo"`
-}) (map[string]any, error) {
-	// Build target list for context.
-	var targetRepos []string
-	for _, t := range targets {
-		targetRepos = append(targetRepos, fmt.Sprintf("%s/%s", t.Org, t.Repo))
-	}
-	targetStr := strings.Join(targetRepos, ", ")
-
-	// Route tool to appropriate endpoint.
-	switch {
-	case strings.HasPrefix(toolName, "juggler_") || strings.HasPrefix(toolName, "github_"):
-		// These are rj-gateway or Chapel subprocess tools, not HexStrike tools.
-		// HexStrike's native commands (credential_scan, tls_check, port_scan, etc.)
-		// never use these prefixes. Return a no-op success so the trace records intent.
-		return map[string]any{
-			"status": "skipped (gateway tool)",
-		}, nil
-
-	default:
-		// Execute as a command via /api/command.
-		command := toolName
-		if targetStr != "" {
-			command = fmt.Sprintf("%s --target %s", toolName, targetStr)
-		}
-		return b.execCommand(command)
-	}
-}
-
-// execCommand calls POST /api/command on HexStrike's Flask API.
-func (b *HexstrikeBackend) execCommand(command string) (map[string]any, error) {
+// callMCPTool sends a tools/call JSON-RPC request to the HexStrike MCP server.
+func (b *HexstrikeBackend) callMCPTool(toolName string, args map[string]any) (string, error) {
+	// Build MCP JSON-RPC request.
 	payload := map[string]any{
-		"command":   command,
-		"use_cache": true,
+		"method": "tools/call",
+		"params": map[string]any{
+			"name":      toolName,
+			"arguments": args,
+		},
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("marshal: %w", err)
+		return "", fmt.Errorf("marshal: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, b.agentURL+"/api/command", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, b.agentURL+"/mcp", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("request: %w", err)
+		return "", fmt.Errorf("request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := b.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("hexstrike command: %w", err)
+		return "", fmt.Errorf("hexstrike mcp: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read: %w", err)
+		return "", fmt.Errorf("read: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("hexstrike returned %d: %s", resp.StatusCode, truncate(string(respBody), 500))
+		return "", fmt.Errorf("hexstrike returned %d: %s", resp.StatusCode, truncate(string(respBody), 500))
 	}
 
-	var result map[string]any
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return map[string]any{"stdout": string(respBody)}, nil
+	// Parse MCP response: {"result": ..., "error": "..."}
+	var mcpResp struct {
+		Result json.RawMessage `json:"result"`
+		Error  string          `json:"error"`
+	}
+	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
+		// Not JSON — return raw output.
+		return string(respBody), nil
 	}
 
-	if errMsg, ok := result["error"].(string); ok && errMsg != "" {
-		return nil, fmt.Errorf("hexstrike error: %s", errMsg)
+	if mcpResp.Error != "" {
+		return "", fmt.Errorf("hexstrike error: %s", mcpResp.Error)
 	}
 
-	return result, nil
+	// Extract text content from MCP result.
+	// MCP tools/call returns: {"content": [{"type": "text", "text": "..."}]}
+	var toolResult struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(mcpResp.Result, &toolResult); err != nil {
+		// Not structured MCP result — return raw JSON.
+		return string(mcpResp.Result), nil
+	}
+
+	var texts []string
+	for _, c := range toolResult.Content {
+		if c.Type == "text" && c.Text != "" {
+			texts = append(texts, c.Text)
+		}
+	}
+	if len(texts) > 0 {
+		return strings.Join(texts, "\n"), nil
+	}
+
+	return string(mcpResp.Result), nil
 }
