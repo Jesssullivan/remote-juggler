@@ -166,10 +166,10 @@ func (s *ApertureSSEIngester) processMetric(data []byte) error {
 	}
 
 	// Build dedup key from fields shared between SSE and webhook sources.
-	// capture_id is SSE-specific, so use a composite of model + tokens + duration + timestamp
-	// to match across both sources reporting the same LLM call.
-	dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d:%d",
-		m.Model, agent, m.InputTokens, m.OutputTokens, m.DurationMs, m.Timestamp.Unix())
+	// capture_id is SSE-specific, so use a composite of model + tokens + timestamp.
+	// Duration is excluded because webhooks don't include it.
+	dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d",
+		m.Model, agent, m.InputTokens, m.OutputTokens, m.Timestamp.Unix())
 
 	s.meter.Record(MeterRecord{
 		Agent:        agent,

@@ -224,8 +224,8 @@ func (r *ApertureWebhookReceiver) record(event ApertureEvent) {
 		}
 		// Build dedup key matching SSE ingester format so the same LLM call
 		// reported by both sources is only counted once.
-		dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d:%d",
-			event.Model, event.Agent, inputTok, outputTok, event.DurationMs, event.Timestamp.Unix())
+		dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d",
+			event.Model, event.Agent, inputTok, outputTok, event.Timestamp.Unix())
 		r.meter.Record(MeterRecord{
 			Agent:        event.Agent,
 			CampaignID:   event.CampaignID,

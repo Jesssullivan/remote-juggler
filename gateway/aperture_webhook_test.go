@@ -146,22 +146,27 @@ func TestWebhookMergesIntoMeterStore(t *testing.T) {
 	store := NewMeterStore()
 	receiver := NewApertureWebhookReceiver(100, store, "")
 
+	now := time.Now()
 	receiver.record(ApertureEvent{
-		Type:       "llm_call",
-		Agent:      "openclaw",
-		CampaignID: "oc-dep-audit",
-		Model:      "claude-sonnet-4",
-		DurationMs: 500,
-		Timestamp:  time.Now(),
+		Type:         "llm_call",
+		Agent:        "openclaw",
+		CampaignID:   "oc-dep-audit",
+		Model:        "claude-sonnet-4",
+		InputTokens:  100,
+		OutputTokens: 50,
+		DurationMs:   500,
+		Timestamp:    now,
 	})
 	receiver.record(ApertureEvent{
-		Type:       "llm_call",
-		Agent:      "openclaw",
-		CampaignID: "oc-dep-audit",
-		Model:      "claude-sonnet-4",
-		DurationMs: 300,
-		Error:      "rate_limit",
-		Timestamp:  time.Now(),
+		Type:         "llm_call",
+		Agent:        "openclaw",
+		CampaignID:   "oc-dep-audit",
+		Model:        "claude-sonnet-4",
+		InputTokens:  200,
+		OutputTokens: 80,
+		DurationMs:   300,
+		Error:        "rate_limit",
+		Timestamp:    now,
 	})
 
 	// Check MeterStore has the merged data.
