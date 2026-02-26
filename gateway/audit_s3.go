@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -148,9 +149,9 @@ func (e *AuditS3Exporter) putObject(ctx context.Context, key string, data []byte
 // s3URL builds the S3 URL for a key (same logic as ApertureS3Ingester).
 func (e *AuditS3Exporter) s3URL(key string) string {
 	if e.endpoint != "" {
-		ep := e.endpoint
-		if ep[len(ep)-1] == '/' {
-			ep = ep[:len(ep)-1]
+		ep := strings.TrimRight(e.endpoint, "/")
+		if !strings.HasPrefix(ep, "https://") && !strings.HasPrefix(ep, "http://") {
+			ep = "https://" + ep
 		}
 		if key != "" {
 			return fmt.Sprintf("%s/%s/%s", ep, e.bucket, key)

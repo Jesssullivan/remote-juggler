@@ -115,6 +115,33 @@ func TestInjectGatewayToolsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestGatewayOnlyToolsList(t *testing.T) {
+	id := json.RawMessage(`42`)
+	resp := gatewayOnlyToolsList(id)
+
+	var msg struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      int    `json:"id"`
+		Result  struct {
+			Tools []json.RawMessage `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(resp, &msg); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if msg.JSONRPC != "2.0" {
+		t.Errorf("jsonrpc = %q, want 2.0", msg.JSONRPC)
+	}
+	if msg.ID != 42 {
+		t.Errorf("id = %d, want 42", msg.ID)
+	}
+	// Should have 15 gateway tools (no Chapel tools).
+	if len(msg.Result.Tools) != 15 {
+		t.Errorf("gateway-only response has %d tools, want 15", len(msg.Result.Tools))
+	}
+}
+
 func TestIsToolsListResponse(t *testing.T) {
 	tests := []struct {
 		name string

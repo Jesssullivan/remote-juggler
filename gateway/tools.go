@@ -370,6 +370,24 @@ func injectGatewayTools(response []byte) []byte {
 	return modified
 }
 
+// gatewayOnlyToolsList constructs a tools/list response with only gateway tools.
+// Used when the Chapel subprocess is unavailable or returns an error.
+func gatewayOnlyToolsList(id json.RawMessage) []byte {
+	msg := struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      json.RawMessage `json:"id"`
+		Result  struct {
+			Tools []json.RawMessage `json:"tools"`
+		} `json:"result"`
+	}{
+		JSONRPC: "2.0",
+		ID:      id,
+	}
+	msg.Result.Tools = gatewayTools()
+	data, _ := json.Marshal(msg)
+	return data
+}
+
 // isToolsListResponse checks if a JSON-RPC response is for tools/list.
 // We detect this by checking if the result has a "tools" array.
 func isToolsListResponse(data []byte) bool {

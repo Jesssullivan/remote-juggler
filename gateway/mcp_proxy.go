@@ -300,6 +300,13 @@ func (p *MCPProxy) HandleRPC(w http.ResponseWriter, r *http.Request) {
 	// Forward to Chapel subprocess (non-tool calls: initialize, tools/list, etc.).
 	resp, err := p.SendRequest(body)
 	if err != nil {
+		// If Chapel is down and this was a tools/list request, return gateway-only tools.
+		if req.Method == "tools/list" {
+			resp = gatewayOnlyToolsList(req.ID)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(resp)
+			return
+		}
 		http.Error(w, "proxy error: "+err.Error(), http.StatusBadGateway)
 		return
 	}
@@ -307,6 +314,9 @@ func (p *MCPProxy) HandleRPC(w http.ResponseWriter, r *http.Request) {
 	// Intercept tools/list responses to inject gateway tools.
 	if isToolsListResponse(resp) {
 		resp = injectGatewayTools(resp)
+	} else if req.Method == "tools/list" {
+		// Chapel returned an error for tools/list — return gateway tools only.
+		resp = gatewayOnlyToolsList(req.ID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

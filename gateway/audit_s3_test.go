@@ -88,6 +88,13 @@ func TestAuditS3Exporter_S3URL(t *testing.T) {
 			bucket:   "my-bucket",
 			want:     "https://s3.civo.com/my-bucket",
 		},
+		{
+			name:     "custom endpoint without scheme",
+			endpoint: "objectstore.nyc1.civo.com",
+			bucket:   "fuzzy-models",
+			key:      "audit/test.ndjson",
+			want:     "https://objectstore.nyc1.civo.com/fuzzy-models/audit/test.ndjson",
+		},
 	}
 
 	for _, tt := range tests {
