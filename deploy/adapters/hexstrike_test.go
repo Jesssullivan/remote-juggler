@@ -260,6 +260,42 @@ func TestHexstrikeBackend_MCPToolCallArgs(t *testing.T) {
 	}
 }
 
+func TestHexstrikeBackend_MCPCallerIdentity(t *testing.T) {
+	// Verify the adapter sends Tailscale-User-Login header for policy auth.
+	var receivedHeader string
+
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/mcp" {
+			receivedHeader = r.Header.Get("Tailscale-User-Login")
+			result, _ := json.Marshal(map[string]any{
+				"content": []map[string]string{
+					{"type": "text", "text": "ok"},
+				},
+			})
+			json.NewEncoder(w).Encode(map[string]any{
+				"result": json.RawMessage(result),
+			})
+		}
+	}))
+	defer agent.Close()
+
+	b := NewHexstrikeBackend(agent.URL)
+	campaign := json.RawMessage(`{
+		"id": "test",
+		"name": "test",
+		"process": ["scan"],
+		"tools": ["port_scan"]
+	}`)
+
+	_, err := b.Dispatch(campaign, "run-1")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+	if receivedHeader != "campaign-runner@fuzzy-dev" {
+		t.Errorf("expected Tailscale-User-Login=campaign-runner@fuzzy-dev, got %q", receivedHeader)
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
 		input  string

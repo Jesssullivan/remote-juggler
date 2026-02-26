@@ -160,6 +160,9 @@ func (b *HexstrikeBackend) callMCPTool(toolName string, args map[string]any) (st
 		return "", fmt.Errorf("request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// Identify as campaign-runner for HexStrike's policy engine.
+	// The gateway uses Tailscale-User-Login header for caller identity.
+	req.Header.Set("Tailscale-User-Login", "campaign-runner@fuzzy-dev")
 
 	resp, err := b.httpClient.Do(req)
 	if err != nil {
