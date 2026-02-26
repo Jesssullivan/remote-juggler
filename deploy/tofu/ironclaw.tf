@@ -70,9 +70,9 @@ resource "kubernetes_deployment" "ironclaw" {
             PVC_SIZE=$(wc -c < /state/openclaw.json 2>/dev/null || echo 0)
             if [ ! -f /state/openclaw.json ] || [ "$IMG_SIZE" -gt "$PVC_SIZE" ]; then
               cp "$IMG_CFG" /state/openclaw.json
-              echo "State config updated (image=${IMG_SIZE}B > pvc=${PVC_SIZE}B)"
+              echo "State config updated (image=$${IMG_SIZE}B > pvc=$${PVC_SIZE}B)"
             else
-              echo "State config preserved (pvc=${PVC_SIZE}B >= image=${IMG_SIZE}B)"
+              echo "State config preserved (pvc=$${PVC_SIZE}B >= image=$${IMG_SIZE}B)"
             fi
           EOT
           ]

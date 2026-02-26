@@ -65,9 +65,9 @@ resource "kubernetes_deployment" "picoclaw" {
             PVC_SIZE=$(wc -c < /state/config.json 2>/dev/null || echo 0)
             if [ ! -f /state/config.json ] || [ "$IMG_SIZE" -gt "$PVC_SIZE" ]; then
               cp "$IMG_CFG" /state/config.json 2>/dev/null || true
-              echo "State config updated (image=${IMG_SIZE}B > pvc=${PVC_SIZE}B)"
+              echo "State config updated (image=$${IMG_SIZE}B > pvc=$${PVC_SIZE}B)"
             else
-              echo "State config preserved (pvc=${PVC_SIZE}B >= image=${IMG_SIZE}B)"
+              echo "State config preserved (pvc=$${PVC_SIZE}B >= image=$${IMG_SIZE}B)"
             fi
           EOT
           ]
