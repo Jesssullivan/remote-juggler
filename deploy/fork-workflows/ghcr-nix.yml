@@ -1,0 +1,71 @@
+# Build and push Nix-built container image to GHCR on main branch pushes.
+# For repos that use `nix build .#container` instead of Dockerfile.
+#
+# Tags:
+#   sha-<commit>  — immutable, Renovate tracks these
+#   edge          — rolling latest from main branch
+#   latest        — alias for edge on main
+#
+# Usage:
+#   1. Copy to repo's .github/workflows/ghcr.yml
+#   2. Update REPO_NAME env var
+#   3. Push to main branch
+name: GHCR Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: tinyland-inc
+  REPO_NAME: hexstrike-ai
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Build container image
+        run: nix build .#container --print-build-logs
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load and tag image
+        run: |
+          # Nix produces a tarball at ./result
+          docker load < ./result
+
+          # The image is tagged as defined in flake.nix (usually <name>:edge)
+          SOURCE="${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:edge"
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          # Tag with sha, edge, and latest
+          docker tag "$SOURCE" "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:sha-${SHA_SHORT}"
+          docker tag "$SOURCE" "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:edge"
+          docker tag "$SOURCE" "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:latest"
+
+      - name: Push all tags
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          docker push "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:sha-${SHA_SHORT}"
+          docker push "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:edge"
+          docker push "${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.REPO_NAME }}:latest"

@@ -1,7 +1,7 @@
 ---
 name: identity-mgmt
 description: RemoteJuggler identity management tools for querying, switching, and validating identities
-version: "1.0"
+version: "2.0"
 tags: [identity, ssh, gpg, credentials, validation]
 ---
 
@@ -9,21 +9,27 @@ tags: [identity, ssh, gpg, credentials, validation]
 
 Use this skill to query and manage git identities via the RemoteJuggler Chapel tools exposed through rj-gateway.
 
+**All tools are accessed via exec and the rj-tool wrapper:**
+
+```bash
+exec("/workspace/bin/rj-tool <tool_name> [key=value ...]")
+```
+
 ## Identity Query
-- `juggler_status()` returns current identity context, auth status, and active configuration
-- `juggler_list_identities(provider="all")` lists all configured identities across providers
-- `juggler_config_show()` displays the full RemoteJuggler configuration
+- `exec("/workspace/bin/rj-tool juggler_status")` returns current identity context, auth status, and active configuration
+- `exec("/workspace/bin/rj-tool juggler_list_identities provider=all")` lists all configured identities across providers
+- `exec("/workspace/bin/rj-tool juggler_config_show")` displays the full RemoteJuggler configuration
 
 ## Identity Validation
-- `juggler_validate(identity="rj-agent-bot")` tests SSH + credential connectivity for a given identity
+- `exec("/workspace/bin/rj-tool juggler_validate identity=rj-agent-bot")` tests SSH + credential connectivity for a given identity
 - Validates: SSH key exists, SSH auth succeeds, token is valid, GPG signing available
 
 ## Token Management
-- `juggler_token_verify()` verifies the current token's validity and scopes
-- `juggler_token_get()` retrieves the active token for the current identity
+- `exec("/workspace/bin/rj-tool juggler_token_verify")` verifies the current token's validity and scopes
+- `exec("/workspace/bin/rj-tool juggler_token_get")` retrieves the active token for the current identity
 
 ## GPG & Signing
-- `juggler_gpg_status()` checks GPG/SSH signing readiness
+- `exec("/workspace/bin/rj-tool juggler_gpg_status")` checks GPG/SSH signing readiness
 - Reports: signing key availability, trust level, expiry status
 
 ## Bot Identity Details
@@ -34,7 +40,7 @@ Use this skill to query and manage git identities via the RemoteJuggler Chapel t
 
 ## Identity Drift Detection
 When running identity audits:
-1. Query current identity with `juggler_status()`
+1. Query current identity with `exec("/workspace/bin/rj-tool juggler_status")`
 2. Compare against expected state in IDENTITY.md
 3. Flag any discrepancies: wrong key, expired token, missing GPG
 4. Log findings for the identity audit campaign

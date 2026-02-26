@@ -7,7 +7,7 @@
 #   2. adapter     — campaign protocol bridge (POST /campaign, GET /status)
 #   3. campaign-runner — scheduler sidecar (reads ConfigMap, dispatches work)
 #
-# IronClaw uses mcporter bridge skill for MCP tool access to rj-gateway.
+# IronClaw uses /workspace/bin/rj-tool wrapper (exec-based) for gateway tool access.
 # LLM calls route through Aperture for identity-aware metering.
 # =============================================================================
 
@@ -61,6 +61,12 @@ resource "kubernetes_deployment" "ironclaw" {
             # cp -n (no-clobber) preserves user-modified files while adding new
             # workspace files, skills, and memory templates from updated images.
             cp -rn /workspace-defaults/* /workspace/ 2>/dev/null || true
+            # Force-update platform tooling (bin/) on every boot — not user-editable.
+            if [ -d /workspace-defaults/bin ]; then
+              mkdir -p /workspace/bin
+              cp -f /workspace-defaults/bin/* /workspace/bin/
+              chmod +x /workspace/bin/*
+            fi
             echo "Workspace synced from defaults (new files added, existing preserved)"
             # Update openclaw.json if the image has a newer/larger config.
             # Source is /app/tinyland/openclaw.json (baked into Dockerfile),
@@ -255,7 +261,7 @@ resource "kubernetes_deployment" "ironclaw" {
 
           args = [
             "--agent-type=ironclaw",
-            "--agent-url=http://localhost:18789",
+            "--agent-url=http://127.0.0.1:18789",
             "--listen-port=8080",
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
           ]

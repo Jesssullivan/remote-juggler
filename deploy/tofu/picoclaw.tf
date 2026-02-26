@@ -136,7 +136,7 @@ resource "kubernetes_deployment" "picoclaw" {
 
           args = [
             "--agent-type=picoclaw",
-            "--agent-url=http://localhost:18790",
+            "--agent-url=http://127.0.0.1:18790",
             "--listen-port=8080",
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
           ]

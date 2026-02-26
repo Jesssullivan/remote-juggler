@@ -215,7 +215,7 @@ resource "kubernetes_deployment" "hexstrike" {
 
           args = [
             "--agent-type=hexstrike-ai",
-            "--agent-url=http://localhost:8888",
+            "--agent-url=http://127.0.0.1:8888",
             "--listen-port=8080",
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
           ]

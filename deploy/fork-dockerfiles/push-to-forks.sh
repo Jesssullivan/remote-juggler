@@ -57,12 +57,12 @@ push_repo() {
   echo "    Cloning ${repo}..."
   gh repo clone "${repo}" "${repo_dir}" -- --branch main --depth 1 --single-branch 2>/dev/null
 
-  # Copy config files into tinyland/ subdir, replace Dockerfile
+  # Copy config files into tinyland/ subdir, replace Dockerfile (for Dockerfile-based repos)
   mkdir -p "${repo_dir}/tinyland"
-  cp "${src_dir}/Dockerfile" "${repo_dir}/Dockerfile"
 
   case "${agent}" in
     ironclaw)
+      cp "${src_dir}/Dockerfile" "${repo_dir}/Dockerfile"
       cp "${src_dir}/openclaw.json" "${repo_dir}/tinyland/openclaw.json"
       if [[ -d "${src_dir}/workspace" ]]; then
         rm -rf "${repo_dir}/tinyland/workspace"
@@ -70,6 +70,7 @@ push_repo() {
       fi
       ;;
     picoclaw)
+      cp "${src_dir}/Dockerfile" "${repo_dir}/Dockerfile"
       cp "${src_dir}/config.json" "${repo_dir}/tinyland/config.json"
       cp "${src_dir}/entrypoint.sh" "${repo_dir}/tinyland/entrypoint.sh"
       chmod +x "${repo_dir}/tinyland/entrypoint.sh"
@@ -79,10 +80,7 @@ push_repo() {
       fi
       ;;
     hexstrike-ai)
-      # Copy Flask server wrapper (bridges adapter to security tools)
-      if [[ -f "${src_dir}/hexstrike_server.py" ]]; then
-        cp "${src_dir}/hexstrike_server.py" "${repo_dir}/hexstrike_server.py"
-      fi
+      # Nix-based repo — no Dockerfile, no Flask server. Only sync workspace.
       if [[ -d "${src_dir}/workspace" ]]; then
         rm -rf "${repo_dir}/tinyland/workspace"
         cp -r "${src_dir}/workspace" "${repo_dir}/tinyland/workspace"
@@ -94,18 +92,29 @@ push_repo() {
   local workflows_src="${SCRIPT_DIR}/../fork-workflows"
   if [[ -d "${workflows_src}" ]]; then
     mkdir -p "${repo_dir}/.github/workflows"
-    for wf in ghcr.yml upstream-sync.yml; do
+    for wf in upstream-sync.yml; do
       if [[ -f "${workflows_src}/${wf}" ]]; then
         sed "s/REPO_NAME: ironclaw/REPO_NAME: ${agent}/" "${workflows_src}/${wf}" > "${repo_dir}/.github/workflows/${wf}"
       fi
     done
+    # GHCR workflow: use Nix variant for repos without Dockerfile, standard otherwise
+    local ghcr_src="ghcr.yml"
+    if [[ "${agent}" == "hexstrike-ai" ]] && [[ -f "${workflows_src}/ghcr-nix.yml" ]]; then
+      ghcr_src="ghcr-nix.yml"
+    fi
+    if [[ -f "${workflows_src}/${ghcr_src}" ]]; then
+      sed "s/REPO_NAME: ironclaw/REPO_NAME: ${agent}/" "${workflows_src}/${ghcr_src}" > "${repo_dir}/.github/workflows/ghcr.yml"
+    fi
   fi
 
   # Force-add tinyland/ dir (some repos gitignore config.json)
   if [[ -d "${repo_dir}/tinyland" ]]; then
     git -C "${repo_dir}" add -f "${repo_dir}/tinyland/"
   fi
-  git -C "${repo_dir}" add "${repo_dir}/Dockerfile"
+  # Add Dockerfile if it was copied (skipped for Nix-based repos)
+  if [[ -f "${repo_dir}/Dockerfile" ]]; then
+    git -C "${repo_dir}" add "${repo_dir}/Dockerfile"
+  fi
 
   # Stage hexstrike_server.py if it was copied
   if [[ -f "${repo_dir}/hexstrike_server.py" ]]; then

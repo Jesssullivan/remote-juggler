@@ -1,8 +1,38 @@
 # IronClaw Tool Reference
 
+## Using Gateway Tools via `rj-tool`
+
+OpenClaw cannot call MCP servers directly. Use the `/workspace/bin/rj-tool` wrapper
+to call any gateway tool via the `exec` tool:
+
+```bash
+# List secrets
+exec("/workspace/bin/rj-tool juggler_setec_list")
+
+# Get a secret
+exec("/workspace/bin/rj-tool juggler_setec_get name=github-token")
+
+# Resolve a credential
+exec("/workspace/bin/rj-tool juggler_resolve_composite query=anthropic-api-key")
+
+# Check campaign status
+exec("/workspace/bin/rj-tool juggler_campaign_status campaign_id=oc-dep-audit")
+
+# Fetch a file from GitHub
+exec("/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=ironclaw path=package.json")
+
+# Create a GitHub issue
+exec("/workspace/bin/rj-tool github_create_issue owner=tinyland-inc repo=ironclaw title='Bug report' body='Details here'")
+
+# List CodeQL alerts
+exec("/workspace/bin/rj-tool github_list_alerts owner=tinyland-inc repo=ironclaw severity=high")
+```
+
+**Syntax**: `rj-tool <tool_name> [key=value ...]`
+
 ## MCP Tools via rj-gateway (51 total: 15 gateway + 36 Chapel)
 
-Access all tools through the rj-gateway MCP server at:
+Direct MCP endpoint (for reference):
 `http://rj-gateway.fuzzy-dev.svc.cluster.local:8080/mcp`
 
 ### Gateway Tools (7)

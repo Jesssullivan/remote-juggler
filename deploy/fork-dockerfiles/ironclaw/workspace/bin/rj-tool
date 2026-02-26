@@ -1,0 +1,134 @@
+#!/bin/sh
+# rj-tool — CLI wrapper for rj-gateway MCP tools
+#
+# OpenClaw cannot call MCP servers directly (ACP mcpCapabilities: {http: false}).
+# This script bridges the gap: IronClaw calls gateway tools via exec("rj-tool ...").
+#
+# Usage:
+#   rj-tool <tool_name> [key=value ...]
+#
+# Examples:
+#   rj-tool juggler_setec_list
+#   rj-tool juggler_setec_get name=github-token
+#   rj-tool juggler_resolve_composite query=anthropic-api-key
+#   rj-tool juggler_campaign_status campaign_id=oc-dep-audit
+#   rj-tool juggler_audit_log count=10
+#   rj-tool github_fetch owner=tinyland-inc repo=ironclaw path=package.json
+#   rj-tool github_list_alerts owner=tinyland-inc repo=ironclaw severity=high
+#   rj-tool github_create_issue owner=tinyland-inc repo=ironclaw title="Bug report" body="Details here"
+#
+# Environment:
+#   RJ_GATEWAY_URL  Override gateway URL (default: in-cluster service)
+
+set -e
+
+GATEWAY="${RJ_GATEWAY_URL:-http://rj-gateway.fuzzy-dev.svc.cluster.local:8080}"
+MCP_ENDPOINT="${GATEWAY}/mcp"
+
+if [ $# -lt 1 ]; then
+  echo "Usage: rj-tool <tool_name> [key=value ...]" >&2
+  echo "" >&2
+  echo "Available tools:" >&2
+  echo "  Gateway:  juggler_resolve_composite, juggler_setec_list, juggler_setec_get," >&2
+  echo "            juggler_setec_put, juggler_audit_log, juggler_campaign_status," >&2
+  echo "            juggler_aperture_usage" >&2
+  echo "  GitHub:   github_fetch, github_list_alerts, github_get_alert," >&2
+  echo "            github_create_branch, github_update_file, github_create_pr," >&2
+  echo "            github_create_issue, juggler_request_secret" >&2
+  echo "  Identity: juggler_list_identities, juggler_detect_identity, juggler_switch," >&2
+  echo "            juggler_status, juggler_validate, juggler_token_verify, juggler_sync_config" >&2
+  echo "  Chapel:   (36 additional tools from Chapel binary)" >&2
+  exit 1
+fi
+
+TOOL="$1"
+shift
+
+# Build JSON arguments object from key=value pairs.
+ARGS="{"
+FIRST=true
+for pair in "$@"; do
+  key="${pair%%=*}"
+  value="${pair#*=}"
+  if [ "$FIRST" = true ]; then
+    FIRST=false
+  else
+    ARGS="${ARGS},"
+  fi
+  # Detect numeric values (don't quote them).
+  case "$value" in
+    ''|*[!0-9]*)
+      # String value — JSON-escape quotes and backslashes.
+      escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
+      ARGS="${ARGS}\"${key}\":\"${escaped}\""
+      ;;
+    *)
+      # Numeric value.
+      ARGS="${ARGS}\"${key}\":${value}"
+      ;;
+  esac
+done
+ARGS="${ARGS}}"
+
+# Build JSON-RPC request.
+PAYLOAD="{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"${TOOL}\",\"arguments\":${ARGS}},\"id\":1}"
+
+# Send request via wget (available in Alpine/Node images, curl may not be).
+RESPONSE=$(wget -qO- --header="Content-Type: application/json" --post-data="${PAYLOAD}" "${MCP_ENDPOINT}" 2>/dev/null) || {
+  # Fallback to curl if wget fails.
+  RESPONSE=$(curl -sf -X POST "${MCP_ENDPOINT}" \
+    -H "Content-Type: application/json" \
+    -d "${PAYLOAD}" 2>/dev/null) || {
+    echo "ERROR: Cannot reach rj-gateway at ${MCP_ENDPOINT}" >&2
+    echo "       Is the gateway running? Check: wget -qO- ${GATEWAY}/health" >&2
+    exit 1
+  }
+}
+
+# Extract result or error from JSON-RPC response.
+# Use node (available in OpenClaw image) for JSON parsing.
+if command -v node >/dev/null 2>&1; then
+  echo "$RESPONSE" | node -e "
+    const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    if (data.error) {
+      console.error('ERROR:', data.error.message || JSON.stringify(data.error));
+      process.exit(1);
+    }
+    const r = data.result;
+    if (r && r.content) {
+      r.content.forEach(c => {
+        if (c.type === 'text') console.log(c.text);
+        else console.log(JSON.stringify(c, null, 2));
+      });
+    } else {
+      console.log(JSON.stringify(r, null, 2));
+    }
+  "
+elif command -v python3 >/dev/null 2>&1; then
+  echo "$RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if 'error' in data:
+    print('ERROR:', data['error'].get('message', json.dumps(data['error'])), file=sys.stderr)
+    sys.exit(1)
+r = data.get('result', {})
+if isinstance(r, dict) and 'content' in r:
+    for c in r['content']:
+        if c.get('type') == 'text':
+            print(c['text'])
+        else:
+            print(json.dumps(c, indent=2))
+else:
+    print(json.dumps(r, indent=2))
+"
+elif command -v jq >/dev/null 2>&1; then
+  ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+  if [ -n "$ERROR" ]; then
+    echo "ERROR: ${ERROR}" >&2
+    exit 1
+  fi
+  echo "$RESPONSE" | jq -r '.result.content[]? | if .type == "text" then .text else . end // .result'
+else
+  # Raw output as fallback.
+  echo "$RESPONSE"
+fi

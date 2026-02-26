@@ -45,6 +45,7 @@ COPY --chown=node:node tinyland/openclaw.json /home/node/.openclaw/openclaw.json
 # Workspace bootstrap files — copied to /workspace-defaults/ so the K8s init
 # container can seed the PVC on first boot without overwriting evolved state.
 COPY --chown=node:node tinyland/workspace/ /workspace-defaults/
+RUN chmod +x /workspace-defaults/bin/rj-tool
 
 USER node
 
