@@ -46,6 +46,10 @@ export TF_VAR_civo_token=$(resolve "civo-token")
 export AWS_ACCESS_KEY_ID=$(resolve "civo-object-storage-key")
 export AWS_SECRET_ACCESS_KEY=$(resolve "civo-object-storage-secret")
 
+# Gateway S3 credentials (for audit + Aperture export to Civo object store)
+export TF_VAR_aperture_s3_access_key="$AWS_ACCESS_KEY_ID"
+export TF_VAR_aperture_s3_secret_key="$AWS_SECRET_ACCESS_KEY"
+
 # Agent credentials (seeded into Setec for runtime resolution)
 export TF_VAR_github_token=$(resolve "github-token" 2>/dev/null || echo "")
 export TF_VAR_gitlab_token=$(resolve "gitlab-token" 2>/dev/null || echo "")
