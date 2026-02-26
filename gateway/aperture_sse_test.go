@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -129,6 +130,49 @@ func TestApertureSSEIngester_Connect(t *testing.T) {
 	if summary.OutputTokens != 30 {
 		t.Errorf("expected 30 output tokens, got %d", summary.OutputTokens)
 	}
+}
+
+func TestDeadlineReaderTimeout(t *testing.T) {
+	// Create a reader that blocks forever.
+	blockForever := &blockingReader{}
+	dr := newDeadlineReader(blockForever, 200*time.Millisecond)
+
+	buf := make([]byte, 64)
+	start := time.Now()
+	_, err := dr.Read(buf)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(err.Error(), "timeout") {
+		t.Errorf("expected timeout error, got: %v", err)
+	}
+	if elapsed < 150*time.Millisecond || elapsed > 1*time.Second {
+		t.Errorf("expected ~200ms timeout, got %v", elapsed)
+	}
+}
+
+func TestDeadlineReaderPassthrough(t *testing.T) {
+	// Normal reader should pass through without timeout.
+	r := strings.NewReader("hello world")
+	dr := newDeadlineReader(r, 5*time.Second)
+
+	buf := make([]byte, 64)
+	n, err := dr.Read(buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(buf[:n]) != "hello world" {
+		t.Errorf("expected 'hello world', got %q", string(buf[:n]))
+	}
+}
+
+// blockingReader blocks forever on Read.
+type blockingReader struct{}
+
+func (b *blockingReader) Read(p []byte) (int, error) {
+	select {} // block forever
 }
 
 func TestApertureSSEIngester_IgnoresNonMetricEvents(t *testing.T) {

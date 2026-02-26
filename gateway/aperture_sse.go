@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -112,10 +114,16 @@ func (s *ApertureSSEIngester) connect(ctx context.Context) error {
 
 	log.Printf("aperture-sse: connected to %s", url)
 	ingested := 0
+	lastActivity := time.Now()
 
-	scanner := bufio.NewScanner(resp.Body)
+	// Wrap body with a read deadline so half-open connections are detected.
+	// If no data arrives within 5 minutes, the read returns an error
+	// and the reconnect loop fires.
+	dr := newDeadlineReader(resp.Body, 5*time.Minute)
+	scanner := bufio.NewScanner(dr)
 	var eventType string
 	for scanner.Scan() {
+		lastActivity = time.Now()
 		line := scanner.Text()
 
 		if strings.HasPrefix(line, "event: ") {
@@ -144,10 +152,50 @@ func (s *ApertureSSEIngester) connect(ctx context.Context) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("read stream: %w", err)
+		return fmt.Errorf("read stream (ingested %d, idle %s): %w", ingested, time.Since(lastActivity).Truncate(time.Second), err)
 	}
 
-	return fmt.Errorf("stream closed by server")
+	return fmt.Errorf("stream closed by server (ingested %d, idle %s)", ingested, time.Since(lastActivity).Truncate(time.Second))
+}
+
+// deadlineReader wraps an io.Reader with a read timeout. Each Read call
+// must complete within the deadline or the read is cancelled. The deadline
+// resets after each successful read, so it acts as an idle timeout.
+type deadlineReader struct {
+	r       io.Reader
+	timeout time.Duration
+	mu      sync.Mutex
+	cancel  context.CancelFunc
+}
+
+func newDeadlineReader(r io.Reader, timeout time.Duration) *deadlineReader {
+	return &deadlineReader{r: r, timeout: timeout}
+}
+
+func (d *deadlineReader) Read(p []byte) (int, error) {
+	d.mu.Lock()
+	if d.cancel != nil {
+		d.cancel()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	d.cancel = cancel
+	d.mu.Unlock()
+
+	done := make(chan struct{})
+	var n int
+	var err error
+	go func() {
+		n, err = d.r.Read(p)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		cancel()
+		return n, err
+	case <-ctx.Done():
+		return 0, fmt.Errorf("sse read timeout after %s", d.timeout)
+	}
 }
 
 // processMetric parses and records a single metric event.
