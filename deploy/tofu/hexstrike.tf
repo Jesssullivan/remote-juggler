@@ -68,6 +68,10 @@ resource "kubernetes_deployment" "hexstrike" {
   spec {
     replicas = var.hexstrike_replicas
 
+    strategy {
+      type = "Recreate"
+    }
+
     selector {
       match_labels = {
         app = "hexstrike-ai-agent"

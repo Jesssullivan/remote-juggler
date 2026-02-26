@@ -23,6 +23,12 @@ resource "kubernetes_deployment" "picoclaw" {
   spec {
     replicas = 1
 
+    # Recreate strategy required: PVCs are ReadWriteOnce and cannot
+    # multi-attach across nodes during rolling updates.
+    strategy {
+      type = "Recreate"
+    }
+
     selector {
       match_labels = {
         app = "picoclaw-agent"

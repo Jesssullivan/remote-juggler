@@ -23,6 +23,10 @@ resource "kubernetes_deployment" "ironclaw" {
   spec {
     replicas = 1
 
+    strategy {
+      type = "Recreate"
+    }
+
     selector {
       match_labels = {
         app = "ironclaw-agent"
