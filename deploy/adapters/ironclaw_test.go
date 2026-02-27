@@ -245,16 +245,20 @@ func TestIronclawBackend_DispatchEnrichedPrompt(t *testing.T) {
 		}
 	}
 
-	// Verify the exec tool definition is included in the payload.
+	// Verify the exec tool definition is included in the payload (nested "function" format).
 	toolsRaw, ok := payload["tools"].([]any)
 	if !ok || len(toolsRaw) == 0 {
 		t.Fatal("expected tools array in payload")
 	}
 	tool := toolsRaw[0].(map[string]any)
-	if tool["name"] != "exec" {
-		t.Errorf("expected tool name=exec, got %v", tool["name"])
-	}
 	if tool["type"] != "function" {
 		t.Errorf("expected tool type=function, got %v", tool["type"])
+	}
+	fn, ok := tool["function"].(map[string]any)
+	if !ok {
+		t.Fatal("expected tool.function to be an object")
+	}
+	if fn["name"] != "exec" {
+		t.Errorf("expected function name=exec, got %v", fn["name"])
 	}
 }

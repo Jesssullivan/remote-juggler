@@ -192,20 +192,23 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	// Provide the exec tool definition so OpenClaw can make function calls.
 	// Without tool definitions, the LLM can only generate text (no tool_calls).
+	// OpenClaw's /v1/responses expects Chat Completions tool format (nested "function" key).
 	tools := []map[string]any{
 		{
-			"type":        "function",
-			"name":        "exec",
-			"description": "Execute a shell command in the workspace. Use this to call rj-tool: exec({\"command\": \"/workspace/bin/rj-tool <tool_name> key=value ...\"})",
-			"parameters": map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"command": map[string]string{
-						"type":        "string",
-						"description": "Shell command to execute",
+			"type": "function",
+			"function": map[string]any{
+				"name":        "exec",
+				"description": "Execute a shell command in the workspace. Use this to call rj-tool: exec({\"command\": \"/workspace/bin/rj-tool <tool_name> key=value ...\"})",
+				"parameters": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"command": map[string]string{
+							"type":        "string",
+							"description": "Shell command to execute",
+						},
 					},
+					"required": []string{"command"},
 				},
-				"required": []string{"command"},
 			},
 		},
 	}
