@@ -16,7 +16,7 @@
 | HexStrike tools working | 0/42 | 10/42 | 19/42 | 19/42 | 8/42 | In Progress |
 | TinyClaw tool calls (verified) | untracked | 5+ | 15+ | 20+ | 5+ | On Track |
 | Inter-agent campaign chains | 0 | 0 | 5+ | 5+ | 8 | Done |
-| Agent-authored PRs merged | 0 | 0 | 0 | 3+ | 1 | In Progress |
+| Agent-authored PRs merged | 0 | 0 | 0 | 3+ | 1 (4 submitted) | On Track |
 | Findings with tool data | ~4 | 20+ | 35+ | 50+ | 93 | Done |
 | LLM confabulations caught | -- | 0 allowed | 0 allowed | 0 allowed | 0 | On Track |
 | Aperture metering accuracy | degraded | measured | within 10% | within 5% | enabled | In Progress |
@@ -68,7 +68,7 @@
 - [x] `oc-self-evolve` campaign producing actionable suggestions -- 3 findings, 3 tools
 - [x] `pc-self-evolve` campaign producing actionable suggestions -- completed
 - [x] `oc-prompt-audit` reviewing campaign quality -- 6 findings → issues #250-255
-- [ ] At least 2 agent-authored PRs submitted -- 1/2: PR #120 (Sprint 2, merged). FeedbackHandler creates Issues not PRs; agent PR creation requires autonomous github_create_pr tool use.
+- [x] At least 2 agent-authored PRs submitted -- PR #120 (merged), PRs #283-285 (IronClaw CodeQL fixes, open). 4 total.
 - [x] At least 1 agent-authored PR merged -- PR #120 merged 2026-02-27
 - [x] Budget enforcement tested (campaign halted by token limit) -- verified 2026-02-28: cc-gateway-health with maxTokens=1000 halted after 2/5 tools (26931/1000 bytes), status=budget_exceeded, Discussion #279
 - [x] Kill switch tested (global halt and recovery) -- verified 2026-02-28: kill ON → campaign blocked, kill OFF → campaign succeeds
@@ -170,8 +170,10 @@ Track which campaigns have produced real results. Updated as campaigns run.
 - **Budget enforcement implemented**: `dispatchDirect` enforces `aiApiBudget.maxTokens` as cap on cumulative MCP response bytes. Adds `TokensUsed` to DispatchResult and CampaignResult. Status `budget_exceeded` when halted.
 - **Budget enforcement verified end-to-end**: cc-gateway-health with maxTokens=1000 halted after 2/5 tools (26931/1000 bytes), Discussion #279
 - Deployed sha-cff34b3 (budget enforcement + kill switch fix)
-**Metrics changed**: Kill switch tested, Budget enforcement tested (2 Phase 3 checkboxes)
-**Next**: Agent-authored PRs, consecutive days tracking
+- **Agent-authored PRs**: Triggered `oc-codeql-fix` campaign → IronClaw autonomously created 3 PRs (#283-285) fixing CodeQL workflow permission alerts. Also ran `oc-docs-freshness` → 2 issues (#280-281), Discussion #282
+- Total: 4 agent-authored PRs (1 merged, 3 open), 36+ Issues, 50+ Discussions
+**Metrics changed**: Kill switch tested, Budget enforcement tested, Agent PRs 0→4 submitted (3 Phase 3 checkboxes)
+**Next**: Merge agent PRs, consecutive days tracking, Gate 3 review
 
 ### 2026-02-28 Early AM (Week 1, Day 1 final)
 
