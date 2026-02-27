@@ -1,8 +1,8 @@
 {
   "grants": [
     {
-      "caller": "hexstrike-ai-agent@fuzzy-dev",
-      "tools": [
+      "src": "hexstrike-ai-agent@fuzzy-dev",
+      "app": [
         "credential_scan",
         "tls_check",
         "port_scan",
@@ -27,8 +27,8 @@
       "description": "Agent identity: full security scanning toolkit"
     },
     {
-      "caller": "campaign-runner@fuzzy-dev",
-      "tools": [
+      "src": "campaign-runner@fuzzy-dev",
+      "app": [
         "credential_scan",
         "tls_check",
         "port_scan",
@@ -39,8 +39,8 @@
       "description": "Campaign runner: read-only scan tools"
     },
     {
-      "caller": "*@taila4c78d.ts.net",
-      "tools": [
+      "src": "*@taila4c78d.ts.net",
+      "app": [
         "credential_scan",
         "tls_check",
         "port_scan",
@@ -65,8 +65,8 @@
       "description": "Tailnet admins: full access"
     },
     {
-      "caller": "*@fuzzy-dev",
-      "tools": [
+      "src": "*@fuzzy-dev",
+      "app": [
         "credential_scan",
         "tls_check",
         "port_scan",

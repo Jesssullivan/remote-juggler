@@ -15,8 +15,8 @@
 let Tool = Text
 
 let Grant =
-      { caller : Text
-      , tools : List Tool
+      { src : Text
+      , app : List Tool
       , dst : Text
       , description : Text
       }
@@ -63,26 +63,26 @@ let campaignRunnerTools =
 
 in  { grants =
       [ -- Grant 1: HexStrike agent — full security toolkit (19 tools)
-        { caller = "hexstrike-ai-agent@fuzzy-dev"
-        , tools = agentTools
+        { src = "hexstrike-ai-agent@fuzzy-dev"
+        , app = agentTools
         , dst = "*"
         , description = "Agent identity: full security scanning toolkit"
         }
       , -- Grant 2: Campaign runner — read-only scanning subset
-        { caller = "campaign-runner@fuzzy-dev"
-        , tools = campaignRunnerTools
+        { src = "campaign-runner@fuzzy-dev"
+        , app = campaignRunnerTools
         , dst = "*"
         , description = "Campaign runner: read-only scan tools"
         }
       , -- Grant 3: Admin — unrestricted access
-        { caller = "*@taila4c78d.ts.net"
-        , tools = agentTools
+        { src = "*@taila4c78d.ts.net"
+        , app = agentTools
         , dst = "*"
         , description = "Tailnet admins: full access"
         }
       , -- Grant 4: Tailnet members — read-only scanning
-        { caller = "*@fuzzy-dev"
-        , tools = campaignRunnerTools
+        { src = "*@fuzzy-dev"
+        , app = campaignRunnerTools
         , dst = "*"
         , description = "Tailnet members: read-only scan subset"
         }
