@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -79,26 +80,106 @@ func (b *IronclawBackend) Health() error {
 // MCP tools are passed as function definitions so OpenClaw can invoke them.
 func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
 	var c struct {
-		ID      string   `json:"id"`
-		Name    string   `json:"name"`
-		Process []string `json:"process"`
-		Tools   []string `json:"tools"`
-		Mode    string   `json:"mode"`
-		Model   string   `json:"model"`
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Process     []string `json:"process"`
+		Tools       []string `json:"tools"`
+		Mode        string   `json:"mode"`
+		Model       string   `json:"model"`
+		Targets     []struct {
+			Forge  string `json:"forge"`
+			Org    string `json:"org"`
+			Repo   string `json:"repo"`
+			Branch string `json:"branch"`
+		} `json:"targets"`
+		Guardrails struct {
+			MaxDuration string `json:"maxDuration"`
+			ReadOnly    bool   `json:"readOnly"`
+		} `json:"guardrails"`
+		Metrics struct {
+			SuccessCriteria string   `json:"successCriteria"`
+			KPIs            []string `json:"kpis"`
+		} `json:"metrics"`
+		Outputs struct {
+			SetecKey string `json:"setecKey"`
+		} `json:"outputs"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
 	}
 
-	// Build prompt from campaign process steps.
-	prompt := fmt.Sprintf("Campaign: %s (run_id: %s)\n\n", c.Name, runID)
+	// Build enriched prompt with full campaign context.
+	var pb strings.Builder
+
+	pb.WriteString(fmt.Sprintf("# Campaign: %s\n", c.Name))
+	pb.WriteString(fmt.Sprintf("**Run ID**: %s\n", runID))
+	if c.Description != "" {
+		pb.WriteString(fmt.Sprintf("**Purpose**: %s\n", c.Description))
+	}
+	pb.WriteString("\n")
+
+	// Targets
+	if len(c.Targets) > 0 {
+		pb.WriteString("## Targets\n")
+		for _, t := range c.Targets {
+			branch := t.Branch
+			if branch == "" {
+				branch = "main"
+			}
+			pb.WriteString(fmt.Sprintf("- %s/%s (branch: %s, forge: %s)\n", t.Org, t.Repo, branch, t.Forge))
+		}
+		pb.WriteString("\n")
+	}
+
+	// Process steps
+	pb.WriteString("## Process\n")
 	for i, step := range c.Process {
-		prompt += fmt.Sprintf("%d. %s\n", i+1, step)
+		pb.WriteString(fmt.Sprintf("%d. %s\n", i+1, step))
 	}
+	pb.WriteString("\n")
+
+	// Tools — instruct LLM to use exec("rj-tool ...") since OpenClaw ignores MCP servers
 	if len(c.Tools) > 0 {
-		prompt += fmt.Sprintf("\nAvailable MCP tools: %v\n", c.Tools)
+		pb.WriteString("## Available Tools\n")
+		pb.WriteString("Call tools via the exec command: `exec(\"/workspace/bin/rj-tool <tool_name> key=value ...\")`\n\n")
+		for _, tool := range c.Tools {
+			pb.WriteString(fmt.Sprintf("- `%s`\n", tool))
+		}
+		pb.WriteString("\n")
 	}
-	prompt += findingsInstruction
+
+	// Guardrails
+	if c.Guardrails.MaxDuration != "" || c.Guardrails.ReadOnly {
+		pb.WriteString("## Constraints\n")
+		if c.Guardrails.MaxDuration != "" {
+			pb.WriteString(fmt.Sprintf("- **Max Duration**: %s\n", c.Guardrails.MaxDuration))
+		}
+		if c.Guardrails.ReadOnly {
+			pb.WriteString("- **Read-Only**: Do NOT create branches, PRs, or modify repositories\n")
+		}
+		pb.WriteString("\n")
+	}
+
+	// Success criteria
+	if c.Metrics.SuccessCriteria != "" {
+		pb.WriteString(fmt.Sprintf("## Success Criteria\n%s\n\n", c.Metrics.SuccessCriteria))
+	}
+	if len(c.Metrics.KPIs) > 0 {
+		pb.WriteString("## KPIs to Track\n")
+		for _, kpi := range c.Metrics.KPIs {
+			pb.WriteString(fmt.Sprintf("- %s\n", kpi))
+		}
+		pb.WriteString("\n")
+	}
+
+	// Output destination
+	if c.Outputs.SetecKey != "" {
+		pb.WriteString(fmt.Sprintf("## Output\nStore results via: `exec(\"/workspace/bin/rj-tool juggler_setec_put name=%s value=<JSON>\")`\n\n", c.Outputs.SetecKey))
+	}
+
+	pb.WriteString(findingsInstruction)
+	prompt := pb.String()
 
 	// Build /v1/responses request.
 	input := []map[string]any{

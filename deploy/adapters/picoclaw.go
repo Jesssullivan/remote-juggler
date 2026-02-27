@@ -103,26 +103,90 @@ func (b *PicoclawBackend) Health() error {
 // {content, finish_reason, error}.
 func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
 	var c struct {
-		ID      string   `json:"id"`
-		Name    string   `json:"name"`
-		Process []string `json:"process"`
-		Tools   []string `json:"tools"`
-		Model   string   `json:"model"`
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Process     []string `json:"process"`
+		Tools       []string `json:"tools"`
+		Model       string   `json:"model"`
+		Targets     []struct {
+			Forge  string `json:"forge"`
+			Org    string `json:"org"`
+			Repo   string `json:"repo"`
+			Branch string `json:"branch"`
+		} `json:"targets"`
+		Guardrails struct {
+			MaxDuration string `json:"maxDuration"`
+			ReadOnly    bool   `json:"readOnly"`
+		} `json:"guardrails"`
+		Metrics struct {
+			SuccessCriteria string   `json:"successCriteria"`
+			KPIs            []string `json:"kpis"`
+		} `json:"metrics"`
+		Outputs struct {
+			SetecKey string `json:"setecKey"`
+		} `json:"outputs"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
 	}
 
-	// Build prompt from campaign process steps.
-	prompt := fmt.Sprintf("Campaign: %s (run_id: %s)\n\n", c.Name, runID)
+	// Build enriched prompt with full campaign context.
+	var pb strings.Builder
+
+	pb.WriteString(fmt.Sprintf("# Campaign: %s\n", c.Name))
+	pb.WriteString(fmt.Sprintf("**Run ID**: %s\n", runID))
+	if c.Description != "" {
+		pb.WriteString(fmt.Sprintf("**Purpose**: %s\n", c.Description))
+	}
+	pb.WriteString("\n")
+
+	if len(c.Targets) > 0 {
+		pb.WriteString("## Targets\n")
+		for _, t := range c.Targets {
+			branch := t.Branch
+			if branch == "" {
+				branch = "main"
+			}
+			pb.WriteString(fmt.Sprintf("- %s/%s (branch: %s, forge: %s)\n", t.Org, t.Repo, branch, t.Forge))
+		}
+		pb.WriteString("\n")
+	}
+
+	pb.WriteString("## Process\n")
 	for i, step := range c.Process {
-		prompt += fmt.Sprintf("%d. %s\n", i+1, step)
+		pb.WriteString(fmt.Sprintf("%d. %s\n", i+1, step))
+	}
+	pb.WriteString("\n")
+
+	if len(c.Tools) > 0 {
+		pb.WriteString("## Available Tools\n")
+		for _, tool := range c.Tools {
+			pb.WriteString(fmt.Sprintf("- `%s`\n", tool))
+		}
+		pb.WriteString("\n")
+	}
+
+	if c.Guardrails.MaxDuration != "" || c.Guardrails.ReadOnly {
+		pb.WriteString("## Constraints\n")
+		if c.Guardrails.MaxDuration != "" {
+			pb.WriteString(fmt.Sprintf("- **Max Duration**: %s\n", c.Guardrails.MaxDuration))
+		}
+		if c.Guardrails.ReadOnly {
+			pb.WriteString("- **Read-Only**: Do NOT create branches, PRs, or modify repositories\n")
+		}
+		pb.WriteString("\n")
+	}
+
+	if c.Metrics.SuccessCriteria != "" {
+		pb.WriteString(fmt.Sprintf("## Success Criteria\n%s\n\n", c.Metrics.SuccessCriteria))
 	}
 
 	// Inject workspace skills as reference context.
-	prompt += b.loadSkills()
+	pb.WriteString(b.loadSkills())
 
-	prompt += findingsInstruction
+	pb.WriteString(findingsInstruction)
+	prompt := pb.String()
 
 	// TinyClaw dispatch API.
 	payload := map[string]string{
@@ -182,9 +246,28 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	findings := extractFindings(dispatchResp.Content, c.ID, runID)
 
+	// Estimate tool calls from response content.
+	// TinyClaw's dispatch response doesn't report tool calls directly,
+	// but the agent output often contains tool invocation evidence.
+	toolCalls := countToolReferences(dispatchResp.Content, c.Tools)
+
 	return &LastResult{
 		Status:    "success",
-		ToolCalls: 0, // TinyClaw doesn't report individual tool calls in dispatch response
+		ToolCalls: toolCalls,
 		Findings:  findings,
 	}, nil
+}
+
+// countToolReferences estimates the number of tool invocations by scanning
+// agent output for tool name references. This is a heuristic — TinyClaw's
+// dispatch API doesn't return structured tool call data.
+func countToolReferences(content string, campaignTools []string) int {
+	count := 0
+	lower := strings.ToLower(content)
+	for _, tool := range campaignTools {
+		if strings.Contains(lower, strings.ToLower(tool)) {
+			count++
+		}
+	}
+	return count
 }

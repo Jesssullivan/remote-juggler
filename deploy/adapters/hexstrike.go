@@ -89,12 +89,10 @@ func (b *HexstrikeBackend) Dispatch(campaign json.RawMessage, runID string) (*La
 		}
 
 		// Build MCP tool arguments.
-		args := map[string]any{
-			"campaign_id": c.ID,
-			"run_id":      runID,
-		}
+		// OCaml tools expect "target" (singular, string) not "targets" (plural, array).
+		args := map[string]any{}
 		if len(targetRepos) > 0 {
-			args["targets"] = targetRepos
+			args["target"] = targetRepos[0]
 		}
 
 		result, err := b.callMCPTool(toolName, args)

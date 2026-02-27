@@ -248,15 +248,14 @@ func TestHexstrikeBackend_MCPToolCallArgs(t *testing.T) {
 		t.Fatalf("dispatch error: %v", err)
 	}
 
-	if receivedArgs["campaign_id"] != "hs-test" {
-		t.Errorf("expected campaign_id=hs-test, got %v", receivedArgs["campaign_id"])
+	// OCaml tools expect "target" (singular string), not "targets" (plural array).
+	target, ok := receivedArgs["target"].(string)
+	if !ok || target != "tinyland-inc/remote-juggler" {
+		t.Errorf("expected target=tinyland-inc/remote-juggler, got %v", receivedArgs["target"])
 	}
-	if receivedArgs["run_id"] != "run-args" {
-		t.Errorf("expected run_id=run-args, got %v", receivedArgs["run_id"])
-	}
-	targets, ok := receivedArgs["targets"].([]any)
-	if !ok || len(targets) != 1 {
-		t.Errorf("expected 1 target, got %v", receivedArgs["targets"])
+	// campaign_id and run_id should NOT be sent (OCaml tools don't recognize them).
+	if _, has := receivedArgs["campaign_id"]; has {
+		t.Error("unexpected campaign_id in args (OCaml tools don't use it)")
 	}
 }
 

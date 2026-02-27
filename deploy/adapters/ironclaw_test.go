@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -188,5 +190,58 @@ func TestIronclawBackend_DispatchAuth(t *testing.T) {
 	}
 	if gotAuth != "Bearer test-token-123" {
 		t.Errorf("expected Bearer auth header, got %q", gotAuth)
+	}
+}
+
+func TestIronclawBackend_DispatchEnrichedPrompt(t *testing.T) {
+	var capturedBody []byte
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedBody, _ = io.ReadAll(r.Body)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id": "resp_1", "status": "completed", "output": []any{},
+		})
+	}))
+	defer agent.Close()
+
+	b := NewIronclawBackend(agent.URL)
+	campaign := json.RawMessage(`{
+		"id":"oc-dep-audit",
+		"name":"Cross-Repo Dependency Audit",
+		"description":"Audits dependency manifests across all repos",
+		"process":["Fetch manifests","Parse dependencies","Find divergences"],
+		"tools":["github_fetch","juggler_setec_put"],
+		"targets":[{"forge":"github","org":"tinyland-inc","repo":"remote-juggler","branch":"main"}],
+		"guardrails":{"maxDuration":"30m","readOnly":true},
+		"metrics":{"successCriteria":"All repos scanned","kpis":["repos_scanned","divergences"]},
+		"outputs":{"setecKey":"remotejuggler/campaigns/oc-dep-audit"}
+	}`)
+
+	_, err := b.Dispatch(campaign, "run-enriched-1")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+
+	// Parse the sent payload to extract the prompt.
+	var payload map[string]any
+	json.Unmarshal(capturedBody, &payload)
+	input := payload["input"].([]any)
+	msg := input[0].(map[string]any)
+	content := msg["content"].(string)
+
+	checks := []string{
+		"Cross-Repo Dependency Audit",
+		"Audits dependency manifests",
+		"tinyland-inc/remote-juggler",
+		"rj-tool",
+		"github_fetch",
+		"Read-Only",
+		"All repos scanned",
+		"repos_scanned",
+		"remotejuggler/campaigns/oc-dep-audit",
+	}
+	for _, check := range checks {
+		if !strings.Contains(content, check) {
+			t.Errorf("prompt missing expected content: %q", check)
+		}
 	}
 }

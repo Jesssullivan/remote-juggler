@@ -231,6 +231,47 @@ func TestPicoclawBackend_SkillsNoDir(t *testing.T) {
 	}
 }
 
+func TestPicoclawBackend_DispatchToolCounting(t *testing.T) {
+	// Verify tool references in output are counted.
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "I used juggler_status to check identity. Then called juggler_list_identities for all configs.",
+			"finish_reason": "stop",
+		})
+	}))
+	defer agent.Close()
+
+	b := NewPicoclawBackend(agent.URL, "")
+	campaign := json.RawMessage(`{"id":"test","name":"test","process":["audit"],"tools":["juggler_status","juggler_list_identities","juggler_validate"]}`)
+
+	result, err := b.Dispatch(campaign, "run-tc-1")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+	if result.ToolCalls < 2 {
+		t.Errorf("expected at least 2 tool references, got %d", result.ToolCalls)
+	}
+}
+
+func TestCountToolReferences(t *testing.T) {
+	tests := []struct {
+		content string
+		tools   []string
+		want    int
+	}{
+		{"used juggler_status and juggler_validate", []string{"juggler_status", "juggler_validate"}, 2},
+		{"no tools used", []string{"juggler_status"}, 0},
+		{"JUGGLER_STATUS was called", []string{"juggler_status"}, 1}, // case-insensitive
+		{"", []string{"juggler_status"}, 0},
+	}
+	for _, tt := range tests {
+		got := countToolReferences(tt.content, tt.tools)
+		if got != tt.want {
+			t.Errorf("countToolReferences(%q, %v) = %d, want %d", tt.content, tt.tools, got, tt.want)
+		}
+	}
+}
+
 func TestPicoclawBackend_LoadSkillsMultiple(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"skill-a", "skill-b"} {
