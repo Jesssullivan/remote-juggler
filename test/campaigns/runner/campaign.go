@@ -94,13 +94,14 @@ type ToolTraceEntry struct {
 type CampaignResult struct {
 	CampaignID    string           `json:"campaign_id"`
 	RunID         string           `json:"run_id"`
-	Status        string           `json:"status"` // "success", "failure", "timeout", "error"
+	Status        string           `json:"status"` // "success", "failure", "timeout", "error", "budget_exceeded"
 	StartedAt     string           `json:"started_at"`
 	FinishedAt    string           `json:"finished_at"`
 	Agent         string           `json:"agent"`
 	KPIs          map[string]any   `json:"kpis,omitempty"`
 	Error         string           `json:"error,omitempty"`
 	ToolCalls     int              `json:"tool_calls"`
+	TokensUsed    int              `json:"tokens_used,omitempty"`
 	Phases        []PhaseResult    `json:"phases,omitempty"`
 	Findings      []Finding        `json:"findings,omitempty"`
 	ToolTrace     []ToolTraceEntry `json:"tool_trace,omitempty"`

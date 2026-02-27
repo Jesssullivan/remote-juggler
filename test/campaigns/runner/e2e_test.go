@@ -498,3 +498,89 @@ func TestE2ECollectorStoresResult(t *testing.T) {
 		t.Errorf("history run_id = %q, want 'run-abc'", historyResult.RunID)
 	}
 }
+
+// TestE2EBudgetEnforcement tests that campaigns are halted when token budget is exceeded.
+func TestE2EBudgetEnforcement(t *testing.T) {
+	gw := newMockGateway()
+	server := httptest.NewServer(gw.Handler())
+	defer server.Close()
+
+	maxTokens := 50 // Very small budget — first tool response will exceed it.
+	campaign := &Campaign{
+		ID:    "budget-test",
+		Agent: "gateway-direct",
+		Tools: []string{"juggler_setec_list", "juggler_audit_log", "juggler_setec_list"},
+		Outputs: CampaignOutputs{
+			SetecKey: "remotejuggler/campaigns/budget-test",
+		},
+		Guardrails: Guardrails{
+			AIApiBudget: &AIBudget{MaxTokens: maxTokens},
+		},
+	}
+
+	dispatcher := NewDispatcher(server.URL, "", "", "")
+	collector := NewCollector(server.URL)
+	scheduler := NewScheduler(map[string]*Campaign{"budget-test": campaign}, dispatcher, collector)
+
+	var capturedResult *CampaignResult
+	scheduler.OnResult = func(r *CampaignResult) {
+		capturedResult = r
+	}
+
+	ctx := context.Background()
+	err := scheduler.RunCampaign(ctx, campaign)
+
+	// Campaign should complete (no error returned) but with budget_exceeded status.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if capturedResult == nil {
+		t.Fatal("no result captured")
+	}
+
+	if capturedResult.Status != "budget_exceeded" {
+		t.Errorf("status = %q, want 'budget_exceeded'", capturedResult.Status)
+	}
+
+	// Should have executed only 1 tool (first succeeds, then budget check halts before second).
+	if capturedResult.ToolCalls < 1 {
+		t.Errorf("expected at least 1 tool call, got %d", capturedResult.ToolCalls)
+	}
+	if capturedResult.ToolCalls >= 3 {
+		t.Errorf("expected fewer than 3 tool calls (budget should halt), got %d", capturedResult.ToolCalls)
+	}
+
+	if capturedResult.TokensUsed == 0 {
+		t.Error("expected tokens_used > 0")
+	}
+}
+
+// TestE2ENoBudgetNoCap tests that campaigns without a budget run all tools.
+func TestE2ENoBudgetNoCap(t *testing.T) {
+	gw := newMockGateway()
+	server := httptest.NewServer(gw.Handler())
+	defer server.Close()
+
+	campaign := &Campaign{
+		ID:    "no-budget-test",
+		Agent: "gateway-direct",
+		Tools: []string{"juggler_setec_list", "juggler_audit_log"},
+		Outputs: CampaignOutputs{
+			SetecKey: "remotejuggler/campaigns/no-budget-test",
+		},
+		Guardrails: Guardrails{}, // No budget set.
+	}
+
+	dispatcher := NewDispatcher(server.URL, "", "", "")
+	result, err := dispatcher.Dispatch(context.Background(), campaign, "run-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ToolCalls != 2 {
+		t.Errorf("tool_calls = %d, want 2", result.ToolCalls)
+	}
+	if result.Error != "" {
+		t.Errorf("unexpected error: %q", result.Error)
+	}
+}

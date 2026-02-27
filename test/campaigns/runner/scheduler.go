@@ -162,6 +162,7 @@ func (s *Scheduler) RunCampaign(ctx context.Context, campaign *Campaign) error {
 	}
 
 	result.ToolCalls = dispatchResult.ToolCalls
+	result.TokensUsed = dispatchResult.TokensUsed
 	result.KPIs = dispatchResult.KPIs
 	result.ToolTrace = dispatchResult.ToolTrace
 	result.Findings = dispatchResult.Findings
@@ -169,6 +170,9 @@ func (s *Scheduler) RunCampaign(ctx context.Context, campaign *Campaign) error {
 	if ctx.Err() != nil {
 		result.Status = "timeout"
 		result.Error = ctx.Err().Error()
+	} else if isBudgetError(dispatchResult.Error) {
+		result.Status = "budget_exceeded"
+		result.Error = dispatchResult.Error
 	} else if dispatchResult.Error != "" {
 		result.Status = "failure"
 		result.Error = dispatchResult.Error
@@ -304,4 +308,9 @@ func cronFieldMatches(field string, value int) bool {
 		return false
 	}
 	return n == value
+}
+
+// isBudgetError checks if an error string indicates budget exhaustion.
+func isBudgetError(errMsg string) bool {
+	return strings.Contains(errMsg, "budget exceeded")
 }

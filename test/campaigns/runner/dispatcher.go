@@ -23,11 +23,12 @@ type Dispatcher struct {
 
 // DispatchResult captures the outcome of dispatching a campaign to an agent.
 type DispatchResult struct {
-	ToolCalls int
-	KPIs      map[string]any
-	ToolTrace []ToolTraceEntry
-	Findings  []Finding
-	Error     string
+	ToolCalls  int
+	TokensUsed int
+	KPIs       map[string]any
+	ToolTrace  []ToolTraceEntry
+	Findings   []Finding
+	Error      string
 }
 
 // NewDispatcher creates a Dispatcher targeting the given rj-gateway URL.
@@ -188,17 +189,34 @@ func (d *Dispatcher) pollAgentStatus(ctx context.Context, campaign *Campaign, ag
 
 // dispatchDirect fires campaign tools sequentially via rj-gateway MCP.
 // Used for "gateway-direct" and other non-container agents.
+// Enforces aiApiBudget.maxTokens as a cap on cumulative response bytes.
 func (d *Dispatcher) dispatchDirect(ctx context.Context, campaign *Campaign, runID string) (*DispatchResult, error) {
 	result := &DispatchResult{
 		KPIs: make(map[string]any),
 	}
 
 	var toolCalls atomic.Int32
+	var totalBytes int
+
+	// Budget: maxTokens acts as a cap on cumulative MCP response bytes
+	// for gateway-direct campaigns (which don't make LLM calls directly).
+	maxBytes := 0
+	if campaign.Guardrails.AIApiBudget != nil && campaign.Guardrails.AIApiBudget.MaxTokens > 0 {
+		maxBytes = campaign.Guardrails.AIApiBudget.MaxTokens
+	}
 
 	// Execute each tool in the campaign's process via MCP.
 	for _, toolName := range campaign.Tools {
 		if ctx.Err() != nil {
 			result.Error = fmt.Sprintf("context cancelled after %d tool calls", toolCalls.Load())
+			break
+		}
+
+		// Check budget before each tool call.
+		if maxBytes > 0 && totalBytes >= maxBytes {
+			log.Printf("campaign %s: budget exceeded (%d/%d bytes) after %d tool calls",
+				campaign.ID, totalBytes, maxBytes, toolCalls.Load())
+			result.Error = fmt.Sprintf("budget exceeded: %d/%d tokens used", totalBytes, maxBytes)
 			break
 		}
 
@@ -214,11 +232,13 @@ func (d *Dispatcher) dispatchDirect(ctx context.Context, campaign *Campaign, run
 			continue
 		}
 
-		log.Printf("campaign %s: tool %s completed (response=%d bytes)",
-			campaign.ID, toolName, len(resp))
+		totalBytes += len(resp)
+		log.Printf("campaign %s: tool %s completed (response=%d bytes, total=%d/%d)",
+			campaign.ID, toolName, len(resp), totalBytes, maxBytes)
 	}
 
 	result.ToolCalls = int(toolCalls.Load())
+	result.TokensUsed = totalBytes
 	return result, nil
 }
 
