@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -246,6 +247,9 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		return nil, fmt.Errorf("read response: %w", err)
 	}
 
+	log.Printf("ironclaw: response status=%d body_len=%d body_preview=%s",
+		resp.StatusCode, len(respBody), truncate(string(respBody), 1000))
+
 	if resp.StatusCode != http.StatusOK {
 		return &LastResult{
 			Status: "failure",
@@ -281,9 +285,11 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	}
 
 	// Extract tool calls and text from output items.
+	log.Printf("ironclaw: response id=%s status=%s output_items=%d", respData.ID, respData.Status, len(respData.Output))
 	var trace []ToolTrace
 	var textContent string
-	for _, item := range respData.Output {
+	for i, item := range respData.Output {
+		log.Printf("ironclaw: output[%d] type=%s name=%s role=%s", i, item.Type, item.Name, item.Role)
 		ts := time.Now().UTC().Format(time.RFC3339)
 		switch item.Type {
 		case "function_call":
