@@ -173,11 +173,18 @@ resource "kubernetes_deployment" "picoclaw" {
             "--agent-url=http://127.0.0.1:18790",
             "--listen-port=8080",
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
+            "--skills-dir=/workspace/skills",
           ]
 
           port {
             container_port = 8080
             name           = "adapter"
+          }
+
+          volume_mount {
+            name       = "workspace"
+            mount_path = "/workspace"
+            read_only  = true
           }
 
           resources {

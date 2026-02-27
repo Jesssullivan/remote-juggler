@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewAdapter_UnknownType(t *testing.T) {
-	_, err := NewAdapter("unknown", "http://localhost:1234", "", "")
+	_, err := NewAdapter("unknown", "http://localhost:1234", "", "", "")
 	if err == nil {
 		t.Fatal("expected error for unknown agent type")
 	}
@@ -18,7 +18,7 @@ func TestNewAdapter_UnknownType(t *testing.T) {
 func TestNewAdapter_ValidTypes(t *testing.T) {
 	types := []string{"ironclaw", "openclaw", "picoclaw", "hexstrike-ai", "hexstrike"}
 	for _, typ := range types {
-		a, err := NewAdapter(typ, "http://localhost:1234", "http://gw:8080", "")
+		a, err := NewAdapter(typ, "http://localhost:1234", "http://gw:8080", "", "")
 		if err != nil {
 			t.Errorf("NewAdapter(%q) error: %v", typ, err)
 		}
@@ -43,7 +43,7 @@ func TestAdapter_Health(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	adapter, err := NewAdapter("ironclaw", agent.URL, "", "")
+	adapter, err := NewAdapter("ironclaw", agent.URL, "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestAdapter_Health(t *testing.T) {
 }
 
 func TestAdapter_StatusIdle(t *testing.T) {
-	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "")
+	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestAdapter_StatusIdle(t *testing.T) {
 }
 
 func TestAdapter_CampaignMethodNotAllowed(t *testing.T) {
-	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "")
+	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestAdapter_CampaignMethodNotAllowed(t *testing.T) {
 }
 
 func TestAdapter_CampaignInvalidBody(t *testing.T) {
-	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "")
+	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestAdapter_CampaignAccepted(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	adapter, err := NewAdapter("ironclaw", agent.URL, "", "")
+	adapter, err := NewAdapter("ironclaw", agent.URL, "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestAdapter_CampaignAccepted(t *testing.T) {
 }
 
 func TestAdapter_CampaignConflict(t *testing.T) {
-	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "")
+	adapter, err := NewAdapter("ironclaw", "http://localhost:1234", "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

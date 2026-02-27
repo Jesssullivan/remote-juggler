@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -15,6 +19,7 @@ import (
 type PicoclawBackend struct {
 	agentURL   string
 	gatewayURL string
+	skillsDir  string // Path to workspace/skills/ directory (optional)
 	httpClient *http.Client
 }
 
@@ -26,6 +31,49 @@ func NewPicoclawBackend(agentURL, gatewayURL string) *PicoclawBackend {
 			Timeout: 10 * time.Minute, // TinyClaw has 10m write deadline on dispatch
 		},
 	}
+}
+
+// SetSkillsDir sets the path to the workspace skills directory.
+// SKILL.md files under this directory are loaded and injected into campaign prompts.
+func (b *PicoclawBackend) SetSkillsDir(dir string) {
+	b.skillsDir = dir
+}
+
+// loadSkills reads all SKILL.md files from the skills directory and returns
+// their content concatenated as context for the LLM prompt.
+func (b *PicoclawBackend) loadSkills() string {
+	if b.skillsDir == "" {
+		return ""
+	}
+
+	entries, err := os.ReadDir(b.skillsDir)
+	if err != nil {
+		log.Printf("skills: cannot read %s: %v", b.skillsDir, err)
+		return ""
+	}
+
+	var parts []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		skillFile := filepath.Join(b.skillsDir, e.Name(), "SKILL.md")
+		data, err := os.ReadFile(skillFile)
+		if err != nil {
+			continue
+		}
+		content := strings.TrimSpace(string(data))
+		if content != "" {
+			parts = append(parts, content)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	log.Printf("skills: loaded %d skill(s) from %s", len(parts), b.skillsDir)
+	return "\n\n## Skills Reference\n\n" + strings.Join(parts, "\n\n---\n\n")
 }
 
 func (b *PicoclawBackend) Type() string { return "picoclaw" }
@@ -70,6 +118,10 @@ func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	for i, step := range c.Process {
 		prompt += fmt.Sprintf("%d. %s\n", i+1, step)
 	}
+
+	// Inject workspace skills as reference context.
+	prompt += b.loadSkills()
+
 	prompt += findingsInstruction
 
 	// TinyClaw dispatch API.

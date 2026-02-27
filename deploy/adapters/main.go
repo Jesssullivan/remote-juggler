@@ -26,6 +26,7 @@ func main() {
 	listenPort := flag.Int("listen-port", intEnvOrDefault("ADAPTER_LISTEN_PORT", 8080), "HTTP port to listen on")
 	gatewayURL := flag.String("gateway-url", envOrDefault("ADAPTER_GATEWAY_URL", ""), "rj-gateway URL (for tool proxy)")
 	agentAuthToken := flag.String("agent-auth-token", envOrDefault("ADAPTER_AGENT_AUTH_TOKEN", ""), "bearer token for agent API auth (OpenClaw gateway)")
+	skillsDir := flag.String("skills-dir", envOrDefault("ADAPTER_SKILLS_DIR", ""), "path to workspace/skills/ directory for skill injection")
 	flag.Parse()
 
 	if *agentType == "" || *agentURL == "" {
@@ -37,7 +38,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
 	log.SetPrefix(fmt.Sprintf("adapter[%s]: ", *agentType))
 
-	adapter, err := NewAdapter(*agentType, *agentURL, *gatewayURL, *agentAuthToken)
+	adapter, err := NewAdapter(*agentType, *agentURL, *gatewayURL, *agentAuthToken, *skillsDir)
 	if err != nil {
 		log.Fatalf("init adapter: %v", err)
 	}

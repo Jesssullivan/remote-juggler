@@ -5,6 +5,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -160,5 +163,93 @@ func TestPicoclawBackend_DispatchHTTPError(t *testing.T) {
 	}
 	if result.Status != "failure" {
 		t.Errorf("expected failure, got %s", result.Status)
+	}
+}
+
+func TestPicoclawBackend_SkillsInjection(t *testing.T) {
+	// Create temp skills directory with a test skill.
+	dir := t.TempDir()
+	skillDir := filepath.Join(dir, "test-skill")
+	os.MkdirAll(skillDir, 0o755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: test-skill\n---\n\n# Test Skill\n\nUse `juggler_status()` for identity info."), 0o644)
+
+	var capturedContent string
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]string
+		json.Unmarshal(body, &req)
+		capturedContent = req["content"]
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "done",
+			"finish_reason": "stop",
+		})
+	}))
+	defer agent.Close()
+
+	b := NewPicoclawBackend(agent.URL, "")
+	b.SetSkillsDir(dir)
+
+	campaign := json.RawMessage(`{"id":"test","name":"test","process":["check identity"],"tools":[]}`)
+	_, err := b.Dispatch(campaign, "run-skills-1")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+
+	if !strings.Contains(capturedContent, "Skills Reference") {
+		t.Error("expected prompt to contain 'Skills Reference' header")
+	}
+	if !strings.Contains(capturedContent, "juggler_status()") {
+		t.Error("expected prompt to contain skill content 'juggler_status()'")
+	}
+}
+
+func TestPicoclawBackend_SkillsNoDir(t *testing.T) {
+	var capturedContent string
+	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]string
+		json.Unmarshal(body, &req)
+		capturedContent = req["content"]
+		json.NewEncoder(w).Encode(map[string]string{
+			"content":       "done",
+			"finish_reason": "stop",
+		})
+	}))
+	defer agent.Close()
+
+	b := NewPicoclawBackend(agent.URL, "")
+	// No SetSkillsDir — skills should not appear.
+
+	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
+	_, err := b.Dispatch(campaign, "run-no-skills")
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+
+	if strings.Contains(capturedContent, "Skills Reference") {
+		t.Error("expected no skills injection when skillsDir is empty")
+	}
+}
+
+func TestPicoclawBackend_LoadSkillsMultiple(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"skill-a", "skill-b"} {
+		sd := filepath.Join(dir, name)
+		os.MkdirAll(sd, 0o755)
+		os.WriteFile(filepath.Join(sd, "SKILL.md"), []byte("# "+name+"\nContent for "+name), 0o644)
+	}
+
+	b := NewPicoclawBackend("http://localhost:1234", "")
+	b.SetSkillsDir(dir)
+
+	result := b.loadSkills()
+	if !strings.Contains(result, "skill-a") {
+		t.Error("expected skill-a content")
+	}
+	if !strings.Contains(result, "skill-b") {
+		t.Error("expected skill-b content")
+	}
+	if !strings.Contains(result, "---") {
+		t.Error("expected separator between skills")
 	}
 }
