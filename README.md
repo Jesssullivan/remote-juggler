@@ -131,12 +131,12 @@ Full checksums file: [SHA256SUMS.txt](https://github.com/tinyland-inc/remote-jug
 <!-- AGENT-STATUS:START -->
 ### Agent Ecosystem Status
 
-Last updated: 2026-02-27 18:51 UTC
+Last updated: 2026-02-27 18:53 UTC
 
 | Campaign | Agent | Last Run | Status | Key Metric |
 |----------|-------|----------|--------|------------|
 | Gateway Health | gateway-direct | <1h ago | PASS | -- |
-| Dependency Audit | openclaw | -- | -- | -- |
+| Dependency Audit | openclaw | <1h ago | PASS | -- |
 | Credential Scan | hexstrike | -- | -- | -- |
 | Gateway Smoketest | openclaw | -- | -- | -- |
 | MCP Regression | gateway-direct | -- | -- | -- |
