@@ -316,6 +316,10 @@ func (s *ApertureS3Ingester) ingestKey(ctx context.Context, key string) error {
 	}
 
 	for _, rec := range records {
+		// Build dedup key matching SSE ingester format to prevent
+		// double-counting when the same event appears in both streams.
+		dedupeKey := fmt.Sprintf("%s:%s:%d:%d:%d",
+			rec.Model, rec.Agent, rec.InputTokens, rec.OutputTokens, rec.Timestamp.Unix())
 		s.meter.Record(MeterRecord{
 			Agent:        rec.Agent,
 			CampaignID:   rec.CampaignID,
@@ -325,6 +329,7 @@ func (s *ApertureS3Ingester) ingestKey(ctx context.Context, key string) error {
 			IsError:      rec.Error != "",
 			InputTokens:  rec.InputTokens,
 			OutputTokens: rec.OutputTokens,
+			DedupeKey:    dedupeKey,
 		})
 	}
 

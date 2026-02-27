@@ -194,7 +194,12 @@ func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result 
 		}
 	}
 	if s.feedback != nil && len(result.Findings) > 0 {
-		if err := s.feedback.ProcessFindings(ctx, campaign, result.Findings, nil); err != nil {
+		// Load previous findings for issue-closing comparison.
+		var previousFindings []Finding
+		if campaign.Feedback.CloseResolvedIssues && s.collector != nil {
+			previousFindings = s.collector.GetPreviousFindings(ctx, campaign)
+		}
+		if err := s.feedback.ProcessFindings(ctx, campaign, result.Findings, previousFindings); err != nil {
 			log.Printf("campaign %s: feedback error: %v", campaign.ID, err)
 		}
 	}

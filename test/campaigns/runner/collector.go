@@ -53,6 +53,36 @@ func (c *Collector) StoreResult(ctx context.Context, campaign *Campaign, result 
 	return nil
 }
 
+// GetPreviousFindings loads the last campaign result from Setec and returns
+// its findings. Returns nil if no previous result exists or on any error.
+func (c *Collector) GetPreviousFindings(ctx context.Context, campaign *Campaign) []Finding {
+	key := campaign.Outputs.SetecKey + "/latest"
+	resp, err := c.dispatcher.callTool(ctx, "juggler_setec_get", map[string]any{
+		"name": key,
+	})
+	if err != nil {
+		return nil
+	}
+
+	// Parse the MCP response to get the stored JSON.
+	var mcpResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(resp, &mcpResult); err != nil || len(mcpResult.Content) == 0 {
+		return nil
+	}
+
+	// The stored value is a JSON-encoded CampaignResult.
+	var prev CampaignResult
+	if err := json.Unmarshal([]byte(mcpResult.Content[0].Text), &prev); err != nil {
+		return nil
+	}
+
+	return prev.Findings
+}
+
 // CheckKillSwitch queries Setec for the global campaign kill switch.
 // Returns true if campaigns should be halted.
 func (c *Collector) CheckKillSwitch(ctx context.Context) (bool, error) {
