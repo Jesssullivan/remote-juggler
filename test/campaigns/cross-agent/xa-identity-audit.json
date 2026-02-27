@@ -5,11 +5,11 @@
   "agent": "ironclaw",
   "trigger": {
     "schedule": "0 8 * * 3",
-    "event": "manual"
+    "event": "manual",
+    "dependsOn": [
+      "oc-identity-audit"
+    ]
   },
-  "dependsOn": [
-    "oc-identity-audit"
-  ],
   "process": [
     "Query IronClaw identity state via juggler_status()",
     "Query PicoClaw health via picoclaw adapter /health endpoint",

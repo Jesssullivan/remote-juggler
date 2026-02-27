@@ -5,11 +5,11 @@
   "agent": "ironclaw",
   "trigger": {
     "schedule": "0 0 * * 1",
-    "event": "manual"
+    "event": "manual",
+    "dependsOn": [
+      "oc-token-budget"
+    ]
   },
-  "dependsOn": [
-    "oc-token-budget"
-  ],
   "process": [
     "Query aggregate Aperture usage: juggler_aperture_usage()",
     "Query per-agent usage: ironclaw, picoclaw, hexstrike-ai",

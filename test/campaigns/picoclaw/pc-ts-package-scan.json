@@ -23,7 +23,7 @@
     {
       "forge": "github",
       "org": "tinyland-inc",
-      "scope": "typescript-packages"
+      "repo": "*"
     }
   ],
   "outputs": {

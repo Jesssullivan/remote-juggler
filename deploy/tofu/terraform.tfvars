@@ -25,15 +25,15 @@ hexstrike_model = "claude-opus-4-20250514"
 # Pin images to specific sha tags from GHCR builds
 # Infrastructure images (from remote-juggler monorepo)
 # renovate: image
-gateway_image         = "ghcr.io/tinyland-inc/remote-juggler/gateway:sha-0d5a943"
+gateway_image         = "ghcr.io/tinyland-inc/remote-juggler/gateway:sha-7ecac4b"
 # renovate: image
-campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-0d5a943"
+campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-7ecac4b"
 # renovate: image
-setec_image           = "ghcr.io/tinyland-inc/remote-juggler/setec:sha-0d5a943"
+setec_image           = "ghcr.io/tinyland-inc/remote-juggler/setec:sha-7ecac4b"
 # renovate: image
-chapel_binary_image   = "ghcr.io/tinyland-inc/remote-juggler:sha-0d5a943"
+chapel_binary_image   = "ghcr.io/tinyland-inc/remote-juggler:sha-7ecac4b"
 # renovate: image
-adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-0d5a943"
+adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-7ecac4b"
 
 # Agent images (from individual repos)
 # renovate: image

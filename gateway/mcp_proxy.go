@@ -223,6 +223,8 @@ var gatewayToolNames = map[string]bool{
 	"github_create_pr":          true,
 	"github_create_issue":       true,
 	"juggler_request_secret":    true,
+	"juggler_campaign_trigger":  true,
+	"juggler_campaign_list":     true,
 }
 
 // HandleRPC handles POST /mcp JSON-RPC requests.
