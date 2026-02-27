@@ -80,10 +80,20 @@ push_repo() {
       fi
       ;;
     hexstrike-ai)
-      # Nix-based repo — no Dockerfile, no Flask server. Only sync workspace.
+      # Nix-based repo — no Dockerfile, no Flask server.
+      # Sync workspace files + Dhall policy source and compiled JSON.
       if [[ -d "${src_dir}/workspace" ]]; then
         rm -rf "${repo_dir}/tinyland/workspace"
         cp -r "${src_dir}/workspace" "${repo_dir}/tinyland/workspace"
+      fi
+      # Sync policy files (Dhall source + compiled JSON).
+      # The Nix build compiles policy.dhall → /compiled/policy.json.
+      # We also ship policy.json for K8s ConfigMap override deployments.
+      if [[ -f "${src_dir}/policy.dhall" ]]; then
+        cp "${src_dir}/policy.dhall" "${repo_dir}/tinyland/policy.dhall"
+      fi
+      if [[ -f "${src_dir}/policy.json" ]]; then
+        cp "${src_dir}/policy.json" "${repo_dir}/tinyland/policy.json"
       fi
       ;;
   esac

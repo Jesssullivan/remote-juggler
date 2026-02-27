@@ -52,6 +52,22 @@ resource "kubernetes_persistent_volume_claim" "hexstrike_workspace" {
   }
 }
 
+# ConfigMap for Dhall-compiled policy JSON.
+# Overrides the baked-in /compiled/policy.json from the Nix image so that
+# policy updates can be deployed without rebuilding the container.
+# Source: deploy/fork-dockerfiles/hexstrike-ai/policy.dhall
+resource "kubernetes_config_map" "hexstrike_policy" {
+  metadata {
+    name      = "hexstrike-policy"
+    namespace = kubernetes_namespace.main.metadata[0].name
+    labels    = merge(local.labels, { app = "hexstrike-ai-agent" })
+  }
+
+  data = {
+    "policy.json" = file("${path.module}/../fork-dockerfiles/hexstrike-ai/policy.json")
+  }
+}
+
 resource "kubernetes_deployment" "hexstrike" {
   wait_for_rollout = false
 
@@ -219,6 +235,15 @@ resource "kubernetes_deployment" "hexstrike" {
             read_only  = true
           }
 
+          # Policy ConfigMap — overrides baked-in /compiled/policy.json.
+          # Allows policy updates without image rebuild.
+          volume_mount {
+            name       = "policy"
+            mount_path = "/compiled/policy.json"
+            sub_path   = "policy.json"
+            read_only  = true
+          }
+
           resources {
             requests = {
               cpu    = "500m"
@@ -277,6 +302,14 @@ resource "kubernetes_deployment" "hexstrike" {
           name = "results"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.hexstrike_results.metadata[0].name
+          }
+        }
+
+        # Dhall policy compiled to JSON — mounted over baked-in image policy.
+        volume {
+          name = "policy"
+          config_map {
+            name = kubernetes_config_map.hexstrike_policy.metadata[0].name
           }
         }
 
