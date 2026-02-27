@@ -57,11 +57,11 @@
 - [x] `xa-*` campaign dependency wiring implemented -- 7/8 xa campaigns running (xa-provision-agent disabled)
 - [x] At least 1 cross-agent chain executed end-to-end -- 8 xa-* campaigns complete
 - [x] FeedbackHandler creating Issues from findings -- fixed labels bug (sha-c85045a), 34 issues created
-- [ ] FeedbackHandler closing Issues for resolved findings
+- [x] FeedbackHandler closing Issues for resolved findings -- wired previousFindings from Setec (sha-d6780dc)
 - [x] Discussion publishing pipeline operational -- 43+ discussions created
 - [x] 10+ GitHub Issues created by agents -- 34 issues across remote-juggler + ironclaw repos
-- [ ] Aperture metering reconciliation running
-- [ ] Gate 2 review completed
+- [x] Aperture metering reconciliation running -- SSE + S3 + MCP proxy feeding MeterStore with cross-source dedup
+- [x] Gate 2 review completed -- all criteria met 2026-02-28
 
 ### Phase 3: Self-Evolution (Weeks 5--6)
 
