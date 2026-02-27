@@ -336,7 +336,7 @@ func (p *MCPProxy) handleGatewayTool(id json.RawMessage, tool string, args json.
 
 	switch tool {
 	case "juggler_resolve_composite":
-		result, err = handleResolveAsMCPTool(p.resolver, args)
+		result, err = handleResolveAsMCPTool(ctx, p.resolver, args)
 		if p.audit != nil {
 			var a struct{ Query string }
 			json.Unmarshal(args, &a)

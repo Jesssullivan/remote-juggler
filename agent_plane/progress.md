@@ -47,7 +47,7 @@
 - [x] TinyClaw dispatch endpoint verified end-to-end -- pc-identity-audit SUCCESS, PR #25
 - [x] All three agents return valid `juggler_status` output -- verified 2026-02-27
 - [ ] Per-campaign result validation implemented (tool-call-required guard)
-- [x] 15+ campaigns have run at least once with real findings -- 21 campaigns, all 4 agent types, 28 findings
+- [x] 15+ campaigns have run at least once with real findings -- 45 campaigns, all 4 agent types, 93 findings
 - [x] Aperture metering baseline measured -- enabled, SSE metering connected
 - [ ] Gate 1 review completed
 
@@ -172,12 +172,13 @@ Track which campaigns have produced real results. Updated as campaigns run.
 - xa-audit-completeness: 3 findings → issues #260-262; xa-cred-lifecycle: 3 findings → issues #264-266
 - **Chapel NUL byte fix**: `escapeJsonString()` in Protocol.chpl now strips control characters (< 0x20) that corrupt JSON-RPC responses from subprocess readAll()
 - Total session: 139 tool calls, 93 findings, 34 GitHub Issues, 43+ Discussions
+- **Chapel NUL byte fix deployed** (sha-59883c6): cc-mcp-regression now 43/43 tools clean (was 40/43 with 3 SOPS parse errors). cc-identity-switch 8 tools, cc-config-sync 5 tools -- all clean.
 **Blocked**:
-- Chapel NUL byte fix not yet deployed (code applied, needs build + deploy)
 - FeedbackHandler search 422 on long fingerprints (non-blocking)
 - IronClaw heuristic tool counting still reports 0 for internal agent loop
+- Gateway /resolve endpoint hangs (Setec tsnet connectivity, used kubectl set image for deploy)
 **Metrics changed**: Campaigns 21→45 (Done!), Never-executed 13→2, Findings 28→93, Issues 13→34, Discussions 25→43+, Inter-agent chains 1→8
-**Next**: Commit + deploy Chapel NUL byte fix, verify cc-* campaigns no longer get JSON-RPC parse errors, prepare Gate 1 review
+**Next**: Prepare Gate 1 review, investigate /resolve timeout, run remaining 2 never-executed campaigns
 
 ### 2026-02-27 Late Evening (Week 1, Day 1 continued)
 

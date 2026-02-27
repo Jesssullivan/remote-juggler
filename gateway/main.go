@@ -63,7 +63,12 @@ func main() {
 		defer tsnetServer.Close()
 
 		// Use tsnet's HTTP client so Setec requests route through the tailnet.
-		setecHTTPClient = tsnetServer.HTTPClient()
+		// Add a 15s timeout to prevent /resolve from hanging when Setec is slow.
+		tsClient := tsnetServer.HTTPClient()
+		setecHTTPClient = &http.Client{
+			Transport: tsClient.Transport,
+			Timeout:   15 * time.Second,
+		}
 		log.Printf("joined tailnet as %s", cfg.Tailscale.Hostname)
 	}
 
@@ -291,8 +296,12 @@ func handleResolve(resolver *Resolver, audit *AuditLog) http.HandlerFunc {
 			return
 		}
 
+		// Use a 30s timeout for resolve to prevent hanging on slow sources.
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+
 		caller, _ := IdentityFromContext(r.Context())
-		result := resolver.Resolve(r.Context(), req.Query, req.Sources)
+		result := resolver.Resolve(ctx, req.Query, req.Sources)
 
 		// Audit log the access.
 		audit.Log(AuditEntry{
@@ -379,7 +388,7 @@ func handleSetecGet(setec *SetecClient, audit *AuditLog) http.HandlerFunc {
 }
 
 // handleResolveAsMCPTool wraps the resolver as a JSON-RPC MCP tool response.
-func handleResolveAsMCPTool(resolver *Resolver, params json.RawMessage) (json.RawMessage, error) {
+func handleResolveAsMCPTool(ctx context.Context, resolver *Resolver, params json.RawMessage) (json.RawMessage, error) {
 	var args struct {
 		Query   string   `json:"query"`
 		Sources []string `json:"sources"`
@@ -388,7 +397,7 @@ func handleResolveAsMCPTool(resolver *Resolver, params json.RawMessage) (json.Ra
 		return nil, fmt.Errorf("parse args: %w", err)
 	}
 
-	result := resolver.Resolve(context.Background(), args.Query, args.Sources)
+	result := resolver.Resolve(ctx, args.Query, args.Sources)
 
 	content := []map[string]any{{
 		"type": "text",
