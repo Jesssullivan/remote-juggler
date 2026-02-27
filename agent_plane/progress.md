@@ -70,7 +70,7 @@
 - [x] `oc-prompt-audit` reviewing campaign quality -- 6 findings → issues #250-255
 - [ ] At least 2 agent-authored PRs submitted
 - [ ] At least 1 agent-authored PR merged
-- [ ] Budget enforcement tested (campaign halted by token limit)
+- [x] Budget enforcement tested (campaign halted by token limit) -- verified 2026-02-28: cc-gateway-health with maxTokens=1000 halted after 2/5 tools (26931/1000 bytes), status=budget_exceeded, Discussion #279
 - [x] Kill switch tested (global halt and recovery) -- verified 2026-02-28: kill ON → campaign blocked, kill OFF → campaign succeeds
 - [ ] 5 consecutive days without manual intervention
 - [ ] Gate 3 review completed
@@ -167,8 +167,11 @@ Track which campaigns have produced real results. Updated as campaigns run.
 - Built sha-3b99547, deployed via tofu apply
 - **Kill switch verified end-to-end**: kill ON → `cc-gateway-health` blocked ("global kill switch active, skipping"), kill OFF → campaign succeeds (5 tools, 1s)
 - Kill switch cleared (set to "false") — scheduled campaigns running normally
-**Metrics changed**: Kill switch tested (Phase 3 checkbox)
-**Next**: Budget enforcement test, agent-authored PRs, consecutive days tracking
+- **Budget enforcement implemented**: `dispatchDirect` enforces `aiApiBudget.maxTokens` as cap on cumulative MCP response bytes. Adds `TokensUsed` to DispatchResult and CampaignResult. Status `budget_exceeded` when halted.
+- **Budget enforcement verified end-to-end**: cc-gateway-health with maxTokens=1000 halted after 2/5 tools (26931/1000 bytes), Discussion #279
+- Deployed sha-cff34b3 (budget enforcement + kill switch fix)
+**Metrics changed**: Kill switch tested, Budget enforcement tested (2 Phase 3 checkboxes)
+**Next**: Agent-authored PRs, consecutive days tracking
 
 ### 2026-02-28 Early AM (Week 1, Day 1 final)
 
