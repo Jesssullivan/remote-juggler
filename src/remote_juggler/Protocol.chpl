@@ -123,7 +123,9 @@ prototype module Protocol {
 
   /*
    * Escape a string for safe inclusion in JSON output.
-   * Handles: backslash, quotes, newlines, tabs, carriage returns
+   * Handles: backslash, quotes, newlines, tabs, carriage returns.
+   * Strips NUL bytes and other control characters (U+0000..U+001F)
+   * that corrupt JSON-RPC when passed through subprocess output.
    */
   proc escapeJsonString(s: string): string {
     var result: string = "";
@@ -134,7 +136,16 @@ prototype module Protocol {
         when '\n' do result += "\\n";
         when '\r' do result += "\\r";
         when '\t' do result += "\\t";
-        otherwise do result += ch;
+        otherwise {
+          // Strip NUL bytes and other ASCII control characters (< 0x20).
+          // These come from C string terminators in subprocess readAll()
+          // and corrupt JSON-RPC responses sent through the gateway proxy.
+          if ch.numBytes == 1 && ch.byte(0) < 0x20 {
+            // Skip control character.
+          } else {
+            result += ch;
+          }
+        }
       }
     }
     return result;
