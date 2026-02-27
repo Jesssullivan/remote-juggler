@@ -16,12 +16,12 @@
 | HexStrike tools working | 0/42 | 10/42 | 19/42 | 19/42 | 8/42 | In Progress |
 | TinyClaw tool calls (verified) | untracked | 5+ | 15+ | 20+ | 5+ | On Track |
 | Inter-agent campaign chains | 0 | 0 | 5+ | 5+ | 8 | Done |
-| Agent-authored PRs merged | 0 | 0 | 0 | 3+ | 0 | Not Started |
+| Agent-authored PRs merged | 0 | 0 | 0 | 3+ | 1 | In Progress |
 | Findings with tool data | ~4 | 20+ | 35+ | 50+ | 93 | Done |
 | LLM confabulations caught | -- | 0 allowed | 0 allowed | 0 allowed | 0 | On Track |
 | Aperture metering accuracy | degraded | measured | within 10% | within 5% | enabled | In Progress |
-| GitHub Discussions with content | 0 | 0 | 10+ | 20+ | 43+ | Done |
-| GitHub Issues from agents | 0 | 5+ | 10+ | 15+ | 34 | Done |
+| GitHub Discussions with content | 0 | 0 | 10+ | 20+ | 48+ | Done |
+| GitHub Issues from agents | 0 | 5+ | 10+ | 15+ | 36 | Done |
 | Agent memory files populated | 0/3 | 2/3 | 3/3 | 3/3 | 0/3 | Not Started |
 | Consecutive days without intervention | 0 | 2 | 3 | 5 | 0 | Not Started |
 
@@ -68,8 +68,8 @@
 - [x] `oc-self-evolve` campaign producing actionable suggestions -- 3 findings, 3 tools
 - [x] `pc-self-evolve` campaign producing actionable suggestions -- completed
 - [x] `oc-prompt-audit` reviewing campaign quality -- 6 findings → issues #250-255
-- [ ] At least 2 agent-authored PRs submitted
-- [ ] At least 1 agent-authored PR merged
+- [ ] At least 2 agent-authored PRs submitted -- 1/2: PR #120 (Sprint 2, merged). FeedbackHandler creates Issues not PRs; agent PR creation requires autonomous github_create_pr tool use.
+- [x] At least 1 agent-authored PR merged -- PR #120 merged 2026-02-27
 - [x] Budget enforcement tested (campaign halted by token limit) -- verified 2026-02-28: cc-gateway-health with maxTokens=1000 halted after 2/5 tools (26931/1000 bytes), status=budget_exceeded, Discussion #279
 - [x] Kill switch tested (global halt and recovery) -- verified 2026-02-28: kill ON → campaign blocked, kill OFF → campaign succeeds
 - [ ] 5 consecutive days without manual intervention
