@@ -71,7 +71,7 @@
 - [ ] At least 2 agent-authored PRs submitted
 - [ ] At least 1 agent-authored PR merged
 - [ ] Budget enforcement tested (campaign halted by token limit)
-- [ ] Kill switch tested (global halt and recovery)
+- [x] Kill switch tested (global halt and recovery) -- verified 2026-02-28: kill ON → campaign blocked, kill OFF → campaign succeeds
 - [ ] 5 consecutive days without manual intervention
 - [ ] Gate 3 review completed
 
@@ -157,6 +157,18 @@ Track which campaigns have produced real results. Updated as campaigns run.
 ---
 
 ## Daily Log
+
+### 2026-02-28 Late AM (Week 1, Day 2)
+
+**Focus**: Kill switch fix + Phase 3 verification
+**Completed**:
+- **Kill switch prefix fix**: `CheckKillSwitch()` was sending `"remotejuggler/campaigns/global-kill"` but gateway adds prefix internally, causing double-prefix. Fixed to bare `"campaigns/global-kill"`.
+- Updated E2E test (`TestE2EKillSwitch`) to match — all 83 campaign runner tests pass, all 128 gateway tests pass
+- Built sha-3b99547, deployed via tofu apply
+- **Kill switch verified end-to-end**: kill ON → `cc-gateway-health` blocked ("global kill switch active, skipping"), kill OFF → campaign succeeds (5 tools, 1s)
+- Kill switch cleared (set to "false") — scheduled campaigns running normally
+**Metrics changed**: Kill switch tested (Phase 3 checkbox)
+**Next**: Budget enforcement test, agent-authored PRs, consecutive days tracking
 
 ### 2026-02-28 Early AM (Week 1, Day 1 final)
 
