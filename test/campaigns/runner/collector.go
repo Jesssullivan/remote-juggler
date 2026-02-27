@@ -87,7 +87,7 @@ func (c *Collector) GetPreviousFindings(ctx context.Context, campaign *Campaign)
 // Returns true if campaigns should be halted.
 func (c *Collector) CheckKillSwitch(ctx context.Context) (bool, error) {
 	resp, err := c.dispatcher.callTool(ctx, "juggler_setec_get", map[string]any{
-		"name": "remotejuggler/campaigns/global-kill",
+		"name": "campaigns/global-kill",
 	})
 	if err != nil {
 		// Key not found = kill switch not set = safe to proceed.

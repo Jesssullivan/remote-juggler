@@ -415,7 +415,7 @@ func TestE2EGatewayUnavailable(t *testing.T) {
 func TestE2EKillSwitch(t *testing.T) {
 	gw := newMockGateway()
 	// Pre-set kill switch.
-	gw.secrets["remotejuggler/campaigns/global-kill"] = "true"
+	gw.secrets["campaigns/global-kill"] = "true"
 	server := httptest.NewServer(gw.Handler())
 	defer server.Close()
 
