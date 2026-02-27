@@ -49,7 +49,7 @@ func NewDispatcher(gatewayURL, ironclawURL, picoclawURL, hexstrikeAIURL string) 
 //   - "ironclaw"/"openclaw" → IronClaw adapter (same pod, localhost:8080)
 //   - "picoclaw"            → PicoClaw adapter (K8s Service)
 //   - "hexstrike-ai"/"hexstrike" → HexStrike-AI adapter (K8s Service)
-//   - "claude-code"/default → direct MCP tool calls via rj-gateway
+//   - "gateway-direct"/default → direct MCP tool calls via rj-gateway
 func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID string) (*DispatchResult, error) {
 	switch campaign.Agent {
 	case "ironclaw", "openclaw":
@@ -187,7 +187,7 @@ func (d *Dispatcher) pollAgentStatus(ctx context.Context, campaign *Campaign, ag
 }
 
 // dispatchDirect fires campaign tools sequentially via rj-gateway MCP.
-// Used for "claude-code" and other non-container agents.
+// Used for "gateway-direct" and other non-container agents.
 func (d *Dispatcher) dispatchDirect(ctx context.Context, campaign *Campaign, runID string) (*DispatchResult, error) {
 	result := &DispatchResult{
 		KPIs: make(map[string]any),

@@ -2,7 +2,7 @@
   "id": "cc-config-sync",
   "name": "Config Sync Verification",
   "description": "Verifies that sync_config correctly propagates identity configuration to SSH config and git config. Tests with various config permutations to ensure no data loss or corruption.",
-  "agent": "claude-code",
+  "agent": "gateway-direct",
   "trigger": {
     "event": "push",
     "pathFilters": [

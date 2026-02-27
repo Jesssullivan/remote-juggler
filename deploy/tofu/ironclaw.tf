@@ -415,6 +415,54 @@ resource "kubernetes_deployment" "ironclaw" {
   depends_on = [helm_release.tailscale_operator]
 }
 
+# ClusterIP Service for IronClaw adapter (campaign runner dispatches here)
+resource "kubernetes_service" "ironclaw" {
+  metadata {
+    name      = "ironclaw-agent"
+    namespace = kubernetes_namespace.main.metadata[0].name
+    labels    = merge(local.labels, { app = "ironclaw-agent" })
+  }
+
+  spec {
+    selector = {
+      app = "ironclaw-agent"
+    }
+
+    port {
+      port        = 8080
+      target_port = 8080
+      name        = "adapter"
+    }
+
+    type = "ClusterIP"
+  }
+}
+
+# ClusterIP Service for campaign-runner API (cross-pod campaign orchestration)
+resource "kubernetes_service" "campaign_runner" {
+  count = var.campaign_runner_enabled ? 1 : 0
+
+  metadata {
+    name      = "campaign-runner"
+    namespace = kubernetes_namespace.main.metadata[0].name
+    labels    = merge(local.labels, { app = "campaign-runner" })
+  }
+
+  spec {
+    selector = {
+      app = "ironclaw-agent"
+    }
+
+    port {
+      port        = 8081
+      target_port = 8081
+      name        = "api"
+    }
+
+    type = "ClusterIP"
+  }
+}
+
 # --- PVCs for IronClaw persistent workspace and state ---
 
 resource "kubernetes_persistent_volume_claim" "ironclaw_workspace" {

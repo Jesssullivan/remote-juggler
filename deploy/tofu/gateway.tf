@@ -117,6 +117,12 @@ resource "kubernetes_deployment" "gateway" {
             value = ":8080"
           }
 
+          # Campaign runner API for cross-pod campaign orchestration.
+          env {
+            name  = "RJ_GATEWAY_CAMPAIGN_RUNNER_URL"
+            value = "http://campaign-runner.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8081"
+          }
+
           port {
             container_port = 8080
             name           = "http"

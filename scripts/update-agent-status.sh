@@ -69,11 +69,11 @@ HEADER
 
     # Known campaigns with their agents (static mapping -- campaigns don't change often).
     declare -A campaign_agents=(
-        ["Gateway Health"]="claude-code"
+        ["Gateway Health"]="gateway-direct"
         ["Gateway Smoketest"]="openclaw"
         ["Dependency Audit"]="openclaw"
         ["Credential Scan"]="hexstrike"
-        ["MCP Regression"]="claude-code"
+        ["MCP Regression"]="gateway-direct"
         ["Audit Completeness"]="cross-agent"
     )
 

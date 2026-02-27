@@ -2,7 +2,7 @@
   "id": "cc-cred-resolution",
   "name": "Credential Resolution E2E",
   "description": "End-to-end test of the composite credential resolver. Tests resolution from each source (env, SOPS, KDBX, Setec) individually and in combination, verifying precedence order and fallback behavior.",
-  "agent": "claude-code",
+  "agent": "gateway-direct",
   "trigger": {
     "event": "push",
     "pathFilters": [

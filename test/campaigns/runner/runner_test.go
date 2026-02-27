@@ -10,7 +10,7 @@ import (
 func TestLoadCampaign(t *testing.T) {
 	// Use the actual campaign definitions from the repo.
 	defs := []string{
-		"../claude-code/cc-mcp-regression.json",
+		"../gateway-direct/cc-mcp-regression.json",
 		"../openclaw/oc-dep-audit.json",
 		"../cross-agent/xa-audit-completeness.json",
 	}

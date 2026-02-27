@@ -103,9 +103,35 @@ func gatewayTools() []json.RawMessage {
 					},
 					"agent": map[string]any{
 						"type":        "string",
-						"description": "Filter usage by agent name (openclaw, hexstrike, claude-code)",
+						"description": "Filter usage by agent name (openclaw, hexstrike, gateway-direct)",
 					},
 				},
+			},
+		},
+	}
+
+	// Campaign orchestration tools (requires campaign-runner URL).
+	campaignTools := []map[string]any{
+		{
+			"name":        "juggler_campaign_trigger",
+			"description": "Trigger a campaign run by ID. Returns immediately with accepted status; the campaign runs asynchronously. Use juggler_campaign_status to check results.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"campaign_id": map[string]any{
+						"type":        "string",
+						"description": "The campaign ID to trigger (e.g. 'oc-dep-audit', 'hs-cred-exposure')",
+					},
+				},
+				"required": []string{"campaign_id"},
+			},
+		},
+		{
+			"name":        "juggler_campaign_list",
+			"description": "List all loaded campaigns in the campaign runner with their agent, schedule, and max duration.",
+			"inputSchema": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
 			},
 		},
 	}
@@ -336,6 +362,7 @@ func gatewayTools() []json.RawMessage {
 		},
 	}
 	tools = append(tools, githubTools...)
+	tools = append(tools, campaignTools...)
 
 	var raw []json.RawMessage
 	for _, t := range tools {

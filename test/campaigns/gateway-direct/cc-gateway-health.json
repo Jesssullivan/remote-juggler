@@ -2,7 +2,7 @@
   "id": "cc-gateway-health",
   "name": "Gateway Health Check",
   "description": "Quick health check of the rj-gateway on startup. Verifies all endpoints respond, tool list is complete, Setec connectivity works, and audit logging is functional.",
-  "agent": "claude-code",
+  "agent": "gateway-direct",
   "trigger": {
     "schedule": "0 * * * *",
     "event": "manual"
@@ -44,7 +44,8 @@
   "feedback": {
     "createIssues": true,
     "createPRs": false,
-    "closeResolvedIssues": true
+    "closeResolvedIssues": true,
+    "publishOnSuccess": false
   },
   "metrics": {
     "successCriteria": "All health checks pass, all tools respond, Setec reachable",

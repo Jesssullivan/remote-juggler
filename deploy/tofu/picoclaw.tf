@@ -108,6 +108,27 @@ resource "kubernetes_deployment" "picoclaw" {
             value = local.anthropic_direct_url
           }
 
+          env {
+            name  = "GIT_AUTHOR_NAME"
+            value = "rj-agent-bot[bot]"
+          }
+          env {
+            name  = "GIT_AUTHOR_EMAIL"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "picoclaw@fuzzy-dev.tinyland.dev"
+          }
+          env {
+            name  = "GIT_COMMITTER_NAME"
+            value = "rj-agent-bot[bot]"
+          }
+          env {
+            name  = "GIT_COMMITTER_EMAIL"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "picoclaw@fuzzy-dev.tinyland.dev"
+          }
+          env {
+            name  = "GIT_SSH_COMMAND"
+            value = "ssh -i /home/agent/.ssh/id_ed25519 -o StrictHostKeyChecking=no"
+          }
+
           port {
             container_port = 18790
             name           = "agent"
@@ -121,6 +142,13 @@ resource "kubernetes_deployment" "picoclaw" {
           volume_mount {
             name       = "state"
             mount_path = "/home/picoclaw/.picoclaw"
+          }
+
+          volume_mount {
+            name       = "ssh-keys"
+            mount_path = "/home/agent/.ssh/id_ed25519"
+            sub_path   = "picoclaw-id-ed25519"
+            read_only  = true
           }
 
           resources {
@@ -174,6 +202,15 @@ resource "kubernetes_deployment" "picoclaw" {
           name = "state"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.picoclaw_state.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "ssh-keys"
+          secret {
+            secret_name  = kubernetes_secret.agent_ssh_keys.metadata[0].name
+            default_mode = "0600"
+            optional     = true
           }
         }
       }

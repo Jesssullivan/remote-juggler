@@ -137,7 +137,7 @@ func TestCampaignResultRoundTrip(t *testing.T) {
 		ToolCalls:  10,
 		Phases: []PhaseResult{
 			{Phase: 1, Agent: "openclaw", Status: "success", ToolCalls: 5},
-			{Phase: 2, Agent: "claude-code", Status: "success", ToolCalls: 5},
+			{Phase: 2, Agent: "gateway-direct", Status: "success", ToolCalls: 5},
 		},
 	}
 

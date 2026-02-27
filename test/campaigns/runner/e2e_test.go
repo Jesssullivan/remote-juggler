@@ -177,7 +177,7 @@ func TestE2EFullSchedulerDispatchCollect(t *testing.T) {
 	campaign := &Campaign{
 		ID:    "e2e-test",
 		Name:  "E2E Test Campaign",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list", "juggler_audit_log", "juggler_campaign_status"},
 		Guardrails: Guardrails{
 			MaxDuration: "30s",
@@ -236,7 +236,7 @@ func TestE2EFullSchedulerDispatchCollect(t *testing.T) {
 	}
 }
 
-// TestE2EDirectDispatch tests direct dispatch (claude-code agent) with sequential tool calls.
+// TestE2EDirectDispatch tests direct dispatch (gateway-direct agent) with sequential tool calls.
 func TestE2EDirectDispatch(t *testing.T) {
 	gw := newMockGateway()
 	server := httptest.NewServer(gw.Handler())
@@ -244,7 +244,7 @@ func TestE2EDirectDispatch(t *testing.T) {
 
 	campaign := &Campaign{
 		ID:    "direct-test",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list", "juggler_audit_log", "juggler_resolve_composite"},
 	}
 
@@ -329,7 +329,7 @@ func TestE2ETimeoutHandling(t *testing.T) {
 
 	campaign := &Campaign{
 		ID:    "timeout-test",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list", "juggler_audit_log", "juggler_campaign_status"},
 		Guardrails: Guardrails{
 			MaxDuration: "1s",
@@ -365,7 +365,7 @@ func TestE2EToolFailure(t *testing.T) {
 
 	campaign := &Campaign{
 		ID:    "fail-test",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list", "juggler_audit_log", "juggler_campaign_status"},
 	}
 
@@ -392,7 +392,7 @@ func TestE2EGatewayUnavailable(t *testing.T) {
 
 	campaign := &Campaign{
 		ID:    "unavail-test",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list"},
 	}
 
@@ -421,7 +421,7 @@ func TestE2EKillSwitch(t *testing.T) {
 
 	campaign := &Campaign{
 		ID:    "kill-test",
-		Agent: "claude-code",
+		Agent: "gateway-direct",
 		Tools: []string{"juggler_setec_list"},
 		Outputs: CampaignOutputs{
 			SetecKey: "remotejuggler/campaigns/kill-test",

@@ -32,7 +32,7 @@
         "ironclaw",
         "picoclaw",
         "hexstrike-ai",
-        "claude-code"
+        "gateway-direct"
       ],
       "description": "Which agent executes this campaign"
     },
@@ -225,6 +225,11 @@
           "type": "boolean",
           "default": false,
           "description": "Auto-close issues when subsequent run shows fix"
+        },
+        "publishOnSuccess": {
+          "type": "boolean",
+          "default": true,
+          "description": "If false, only publish Discussions on failure (suppresses noisy PASS results for health checks)"
         }
       },
       "additionalProperties": false

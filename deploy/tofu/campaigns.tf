@@ -16,7 +16,7 @@ resource "kubernetes_config_map" "campaign_definitions" {
 
   data = merge(
     { "index.json" = file("${path.module}/../../test/campaigns/index.json") },
-    { for f in fileset("${path.module}/../../test/campaigns/claude-code", "*.json") : f => file("${path.module}/../../test/campaigns/claude-code/${f}") },
+    { for f in fileset("${path.module}/../../test/campaigns/gateway-direct", "*.json") : f => file("${path.module}/../../test/campaigns/gateway-direct/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/openclaw", "*.json") : f => file("${path.module}/../../test/campaigns/openclaw/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/hexstrike", "*.json") : f => file("${path.module}/../../test/campaigns/hexstrike/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/picoclaw", "*.json") : f => file("${path.module}/../../test/campaigns/picoclaw/${f}") },

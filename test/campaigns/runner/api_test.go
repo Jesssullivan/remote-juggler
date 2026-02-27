@@ -12,7 +12,7 @@ func newTestAPI() *APIServer {
 		"test-campaign": {
 			ID:    "test-campaign",
 			Name:  "Test Campaign",
-			Agent: "claude-code",
+			Agent: "gateway-direct",
 			Trigger: CampaignTrigger{
 				Schedule: "0 * * * *",
 			},

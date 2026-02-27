@@ -63,11 +63,11 @@ Last updated: 2026-02-27 04:00 UTC
 
 | Campaign | Agent | Last Run | Status | Key Metric |
 |----------|-------|----------|--------|------------|
-| Gateway Health | claude-code | <1h ago | PASS | -- |
+| Gateway Health | gateway-direct | <1h ago | PASS | -- |
 | Dependency Audit | openclaw | -- | -- | -- |
 | Credential Scan | hexstrike | -- | -- | -- |
 | Gateway Smoketest | openclaw | -- | -- | -- |
-| MCP Regression | claude-code | -- | -- | -- |
+| MCP Regression | gateway-direct | -- | -- | -- |
 | Audit Completeness | cross-agent | -- | -- | -- |
 
 *View all reports in [Discussions](https://github.com/tinyland-inc/remote-juggler/discussions)*

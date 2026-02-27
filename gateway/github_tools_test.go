@@ -25,7 +25,7 @@ func TestGitHubFetch(t *testing.T) {
 		if r.URL.Path != "/repos/tinyland-inc/remote-juggler/contents/main.go" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		if r.Header.Get("Authorization") != "token test-token-123" {
+		if r.Header.Get("Authorization") != "Bearer test-token-123" {
 			t.Errorf("missing auth header")
 		}
 		json.NewEncoder(w).Encode(map[string]any{

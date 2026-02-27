@@ -198,7 +198,7 @@ func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result 
 			log.Printf("campaign %s: feedback error: %v", campaign.ID, err)
 		}
 	}
-	if s.publisher != nil {
+	if s.publisher != nil && campaign.Feedback.ShouldPublish(result.Status) {
 		url, err := s.publisher.Publish(ctx, campaign, result)
 		if err != nil {
 			log.Printf("campaign %s: publish error: %v", campaign.ID, err)

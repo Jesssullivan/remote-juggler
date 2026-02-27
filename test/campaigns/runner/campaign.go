@@ -61,9 +61,19 @@ type AIBudget struct {
 
 // Feedback defines how campaign results feed back into the org.
 type Feedback struct {
-	CreateIssues        bool `json:"createIssues"`
-	CreatePRs           bool `json:"createPRs"`
-	CloseResolvedIssues bool `json:"closeResolvedIssues"`
+	CreateIssues        bool  `json:"createIssues"`
+	CreatePRs           bool  `json:"createPRs"`
+	CloseResolvedIssues bool  `json:"closeResolvedIssues"`
+	PublishOnSuccess    *bool `json:"publishOnSuccess,omitempty"` // nil = true (default: always publish)
+}
+
+// ShouldPublish returns whether a Discussion should be created for the given result status.
+// When PublishOnSuccess is explicitly false, only non-success results are published.
+func (f Feedback) ShouldPublish(status string) bool {
+	if f.PublishOnSuccess != nil && !*f.PublishOnSuccess {
+		return status != "success"
+	}
+	return true
 }
 
 // Metrics defines success criteria and KPIs.

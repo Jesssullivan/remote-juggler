@@ -16,7 +16,7 @@ func newWebhookTestAPI() *APIServer {
 		"push-gateway": {
 			ID:    "push-gateway",
 			Name:  "Gateway Push Check",
-			Agent: "claude-code",
+			Agent: "gateway-direct",
 			Trigger: CampaignTrigger{
 				Event:       "push",
 				PathFilters: []string{"gateway/*.go"},
@@ -43,7 +43,7 @@ func newWebhookTestAPI() *APIServer {
 		"push-wildcard": {
 			ID:    "push-wildcard",
 			Name:  "Push Any Repo",
-			Agent: "claude-code",
+			Agent: "gateway-direct",
 			Trigger: CampaignTrigger{
 				Event: "push",
 			},
@@ -56,7 +56,7 @@ func newWebhookTestAPI() *APIServer {
 		"cron-only": {
 			ID:    "cron-only",
 			Name:  "Cron Only",
-			Agent: "claude-code",
+			Agent: "gateway-direct",
 			Trigger: CampaignTrigger{
 				Schedule: "0 4 * * 1",
 			},

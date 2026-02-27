@@ -12,9 +12,10 @@ locals {
   # Only non-empty values are seeded.
   setec_seed_secrets = {
     for k, v in {
-      "github-token"      = var.github_token
-      "gitlab-token"      = var.gitlab_token
-      "anthropic-api-key" = var.anthropic_api_key
+      "github-token"              = var.github_token
+      "gitlab-token"              = var.gitlab_token
+      "anthropic-api-key"         = var.anthropic_api_key
+      "github-app-private-key"    = var.github_app_private_key
     } : k => v if v != ""
   }
 

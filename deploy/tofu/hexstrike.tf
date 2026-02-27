@@ -167,6 +167,27 @@ resource "kubernetes_deployment" "hexstrike" {
           }
 
           env {
+            name  = "GIT_AUTHOR_NAME"
+            value = "rj-agent-bot[bot]"
+          }
+          env {
+            name  = "GIT_AUTHOR_EMAIL"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "hexstrike@fuzzy-dev.tinyland.dev"
+          }
+          env {
+            name  = "GIT_COMMITTER_NAME"
+            value = "rj-agent-bot[bot]"
+          }
+          env {
+            name  = "GIT_COMMITTER_EMAIL"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "hexstrike@fuzzy-dev.tinyland.dev"
+          }
+          env {
+            name  = "GIT_SSH_COMMAND"
+            value = "ssh -i /home/agent/.ssh/id_ed25519 -o StrictHostKeyChecking=no"
+          }
+
+          env {
             name  = "HEXSTRIKE_POLICY_PATH"
             value = "/compiled/policy.json"
           }
@@ -189,6 +210,13 @@ resource "kubernetes_deployment" "hexstrike" {
           volume_mount {
             name       = "results"
             mount_path = "/results"
+          }
+
+          volume_mount {
+            name       = "ssh-keys"
+            mount_path = "/home/agent/.ssh/id_ed25519"
+            sub_path   = "hexstrike-id-ed25519"
+            read_only  = true
           }
 
           resources {
@@ -252,7 +280,7 @@ resource "kubernetes_deployment" "hexstrike" {
           }
         }
 
-        # SSH keys volume preserved for future use (not mounted in Nix container).
+        # SSH keys for git push over SSH (deploy key per agent repo).
         volume {
           name = "ssh-keys"
           secret {

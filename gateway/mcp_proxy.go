@@ -37,6 +37,7 @@ type MCPProxy struct {
 	aperture   *ApertureClient
 	meterStore *MeterStore
 	github     *GitHubToolHandler
+	campaigns  *CampaignClient
 }
 
 // NewMCPProxy creates a proxy for the given Chapel binary.
@@ -422,6 +423,24 @@ func (p *MCPProxy) handleGatewayTool(id json.RawMessage, tool string, args json.
 
 	case "juggler_aperture_usage":
 		result, err = handleApertureUsageTool(p.aperture, args)
+
+	case "juggler_campaign_trigger":
+		result, err = handleCampaignTriggerTool(p.campaigns, args)
+		if p.audit != nil {
+			var a struct {
+				CampaignID string `json:"campaign_id"`
+			}
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "campaign_trigger",
+				Query:   a.CampaignID,
+				Allowed: err == nil,
+			})
+		}
+
+	case "juggler_campaign_list":
+		result, err = handleCampaignListTool(p.campaigns, args)
 
 	case "github_fetch":
 		result, err = p.github.Fetch(ctx, args)

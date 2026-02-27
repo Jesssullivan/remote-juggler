@@ -3,31 +3,31 @@
   "description": "RemoteJuggler campaign registry. Managed by campaign-runner sidecar.",
   "campaigns": {
     "cc-mcp-regression": {
-      "file": "claude-code/cc-mcp-regression.json",
+      "file": "gateway-direct/cc-mcp-regression.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "cc-identity-switch": {
-      "file": "claude-code/cc-identity-switch.json",
+      "file": "gateway-direct/cc-identity-switch.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "cc-config-sync": {
-      "file": "claude-code/cc-config-sync.json",
+      "file": "gateway-direct/cc-config-sync.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "cc-cred-resolution": {
-      "file": "claude-code/cc-cred-resolution.json",
+      "file": "gateway-direct/cc-cred-resolution.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "cc-gateway-health": {
-      "file": "claude-code/cc-gateway-health.json",
+      "file": "gateway-direct/cc-gateway-health.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null

@@ -1,7 +1,7 @@
 ## Agent-Generated Pull Request
 
 **Campaign**: <!-- campaign ID -->
-**Agent**: <!-- openclaw / hexstrike / claude-code -->
+**Agent**: <!-- openclaw / picoclaw / hexstrike / gateway-direct -->
 **Run ID**: <!-- campaign run identifier -->
 **Model**: <!-- claude-sonnet-4 / claude-opus-4 -->
 

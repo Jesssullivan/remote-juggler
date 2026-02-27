@@ -8,8 +8,8 @@ Campaigns are declarative JSON definitions that describe automated tasks for age
 
 | Campaign | Agent | Schedule | Budget | Description |
 |----------|-------|----------|--------|-------------|
-| `cc-gateway-health` | claude-code | Hourly | 5K tokens | Verifies all 43 MCP tools respond correctly |
-| `cc-mcp-regression` | claude-code | On push | 5K tokens | Regression tests for tool schemas and behavior |
+| `cc-gateway-health` | gateway-direct | Hourly | 5K tokens | Verifies all 43 MCP tools respond correctly |
+| `cc-mcp-regression` | gateway-direct | On push | 5K tokens | Regression tests for tool schemas and behavior |
 | `oc-gateway-smoketest` | openclaw | Manual | 10K tokens | Quick 3-tool validation of gateway health |
 | `oc-dep-audit` | openclaw | Weekly Mon 2am | 100K tokens | Cross-repo dependency version divergence analysis |
 | `xa-audit-completeness` | cross-agent | Dependent | 20K tokens | Validates audit coverage across all tool calls |
@@ -41,7 +41,7 @@ Campaign definitions are JSON files in `test/campaigns/`. Key fields:
 {
   "id": "campaign-id",
   "name": "Human-Readable Name",
-  "agent": "openclaw|hexstrike|claude-code",
+  "agent": "openclaw|hexstrike|gateway-direct",
   "trigger": {
     "schedule": "0 6 * * 1",
     "event": "manual|push|pull_request|dependent",

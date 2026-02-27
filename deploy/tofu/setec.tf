@@ -58,6 +58,26 @@ resource "kubernetes_deployment" "setec" {
           name = kubernetes_secret.ghcr_pull.metadata[0].name
         }
 
+        security_context {
+          fs_group = 10000
+        }
+
+        # Fix PVC ownership: existing data may be root-owned from before fs_group was set.
+        init_container {
+          name  = "fix-perms"
+          image = "busybox:1.37"
+          command = ["/bin/sh", "-c", "chown -R 10000:10000 /data"]
+
+          security_context {
+            run_as_user = 0
+          }
+
+          volume_mount {
+            name       = "setec-data"
+            mount_path = "/data"
+          }
+        }
+
         # Single container — Tailscale Operator injects the sidecar
         container {
           name  = "setec"

@@ -286,7 +286,7 @@ func TestCategoryForCampaign(t *testing.T) {
 		{&Campaign{ID: "oc-weekly-digest", Agent: "openclaw"}, "Weekly Digest"},
 		{&Campaign{ID: "hs-cred-exposure", Agent: "hexstrike"}, "Security Advisories"},
 		{&Campaign{ID: "oc-dep-audit", Agent: "openclaw"}, "Agent Reports"},
-		{&Campaign{ID: "cc-gateway-health", Agent: "claude-code"}, "Agent Reports"},
+		{&Campaign{ID: "cc-gateway-health", Agent: "gateway-direct"}, "Agent Reports"},
 	}
 
 	for _, tt := range tests {

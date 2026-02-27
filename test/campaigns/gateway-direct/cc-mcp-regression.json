@@ -2,7 +2,7 @@
   "id": "cc-mcp-regression",
   "name": "MCP Tool Regression Testing",
   "description": "Validates all 43 MCP tools (36 Chapel + 7 gateway) respond correctly. Starts a local rj-gateway, calls tools/list, then exercises each tool with valid and invalid parameters to detect regressions in tool schemas, names, or behavior.",
-  "agent": "claude-code",
+  "agent": "gateway-direct",
   "trigger": {
     "event": "push",
     "pathFilters": [
@@ -88,7 +88,8 @@
   "feedback": {
     "createIssues": true,
     "createPRs": false,
-    "closeResolvedIssues": true
+    "closeResolvedIssues": true,
+    "publishOnSuccess": false
   },
   "metrics": {
     "successCriteria": "All 43 tools respond to valid params without error; tool count matches baseline",

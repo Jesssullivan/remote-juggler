@@ -2,7 +2,7 @@
   "id": "cc-identity-switch",
   "name": "Identity Switching Correctness",
   "description": "Tests that identity detection and switching works correctly across all supported forges (GitHub, GitLab, Codeberg). Creates temp clones, detects identity, switches, validates SSH connectivity, and runs rapid switch stress test.",
-  "agent": "claude-code",
+  "agent": "gateway-direct",
   "trigger": {
     "event": "push",
     "pathFilters": [

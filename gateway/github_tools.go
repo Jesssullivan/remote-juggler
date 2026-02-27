@@ -527,7 +527,7 @@ func (h *GitHubToolHandler) doRequest(ctx context.Context, method, url string, b
 		return nil, fmt.Errorf("resolve GitHub token: %w", err)
 	}
 
-	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	if body != nil {

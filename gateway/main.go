@@ -80,15 +80,39 @@ func main() {
 	// Wire gateway tool handlers into the proxy for MCP tool interception.
 	aperture := NewApertureClient(cfg.ApertureURL)
 	aperture.SetMeterStore(meterStore)
-	githubTools := NewGitHubToolHandler(func(ctx context.Context) (string, error) {
-		return setec.Get(ctx, "github-token")
-	})
+	// Try GitHub App installation tokens (bot attribution) from Setec credentials.
+	// Falls back to PAT if App credentials are not available.
+	var githubTokenFunc func(ctx context.Context) (string, error)
+	if setec.Configured() {
+		appID, _ := setec.Get(context.Background(), "github-app-id")
+		appKey, _ := setec.Get(context.Background(), "github-app-private-key")
+		if appID != "" && appKey != "" {
+			installID, _ := setec.Get(context.Background(), "github-app-install-id")
+			appProvider, err := NewAppTokenProviderFromCredentials(appID, appKey, installID)
+			if err == nil {
+				log.Printf("github: using App installation tokens (bot attribution)")
+				githubTokenFunc = func(ctx context.Context) (string, error) {
+					return appProvider.Token()
+				}
+			} else {
+				log.Printf("github: App token setup failed: %v, falling back to PAT", err)
+			}
+		}
+	}
+	if githubTokenFunc == nil {
+		log.Printf("github: using PAT from Setec")
+		githubTokenFunc = func(ctx context.Context) (string, error) {
+			return setec.Get(ctx, "github-token")
+		}
+	}
+	githubTools := NewGitHubToolHandler(githubTokenFunc)
 	proxy.resolver = resolver
 	proxy.setec = setec
 	proxy.audit = audit
 	proxy.aperture = aperture
 	proxy.meterStore = meterStore
 	proxy.github = githubTools
+	proxy.campaigns = NewCampaignClient(cfg.CampaignRunnerURL)
 
 	// Start background polling for configured secrets.
 	if setec.Configured() && len(cfg.SetecSecrets) > 0 {

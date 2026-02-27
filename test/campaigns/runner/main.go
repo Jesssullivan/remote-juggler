@@ -62,7 +62,7 @@ func main() {
 		}
 		defPath := filepath.Join(*campaignsDir, entry.File)
 		// Fallback: ConfigMap mounts files flat (no subdirectories),
-		// but index.json references paths like "claude-code/cc-gateway-health.json".
+		// but index.json references paths like "gateway-direct/cc-gateway-health.json".
 		// Try the basename if the full path doesn't exist.
 		if _, statErr := os.Stat(defPath); os.IsNotExist(statErr) {
 			defPath = filepath.Join(*campaignsDir, filepath.Base(entry.File))
