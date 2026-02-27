@@ -32,13 +32,19 @@ type Finding struct {
 	Fingerprint string   `json:"fingerprint"` // Dedupe key.
 }
 
+// GitHubLabel represents a GitHub label object returned by the API.
+type GitHubLabel struct {
+	Name string `json:"name"`
+}
+
 // GitHubIssue represents a GitHub issue (subset of fields).
+// Labels are objects ({name, id, color, ...}) in the GitHub API, not plain strings.
 type GitHubIssue struct {
-	Number int      `json:"number"`
-	Title  string   `json:"title"`
-	State  string   `json:"state"`
-	Labels []string `json:"labels,omitempty"`
-	Body   string   `json:"body"`
+	Number int           `json:"number"`
+	Title  string        `json:"title"`
+	State  string        `json:"state"`
+	Labels []GitHubLabel `json:"labels,omitempty"`
+	Body   string        `json:"body"`
 }
 
 // NewFeedbackHandler creates a FeedbackHandler with the given GitHub token.
