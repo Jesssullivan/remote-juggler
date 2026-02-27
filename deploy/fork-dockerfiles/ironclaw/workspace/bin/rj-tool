@@ -86,9 +86,10 @@ RESPONSE=$(wget -qO- --header="Content-Type: application/json" --post-data="${PA
 }
 
 # Extract result or error from JSON-RPC response.
-# Use node (available in OpenClaw image) for JSON parsing.
+# IMPORTANT: Use printf '%s\n' (not echo) to preserve literal backslashes
+# in JSON. echo interprets \n, \t etc. which corrupts embedded JSON strings.
 if command -v node >/dev/null 2>&1; then
-  echo "$RESPONSE" | node -e "
+  printf '%s\n' "$RESPONSE" | node -e "
     const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
     if (data.error) {
       console.error('ERROR:', data.error.message || JSON.stringify(data.error));
@@ -105,7 +106,7 @@ if command -v node >/dev/null 2>&1; then
     }
   "
 elif command -v python3 >/dev/null 2>&1; then
-  echo "$RESPONSE" | python3 -c "
+  printf '%s\n' "$RESPONSE" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 if 'error' in data:
@@ -122,13 +123,13 @@ else:
     print(json.dumps(r, indent=2))
 "
 elif command -v jq >/dev/null 2>&1; then
-  ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+  ERROR=$(printf '%s\n' "$RESPONSE" | jq -r '.error.message // empty')
   if [ -n "$ERROR" ]; then
     echo "ERROR: ${ERROR}" >&2
     exit 1
   fi
-  echo "$RESPONSE" | jq -r '.result.content[]? | if .type == "text" then .text else . end // .result'
+  printf '%s\n' "$RESPONSE" | jq -r '.result.content[]? | if .type == "text" then .text else . end // .result'
 else
   # Raw output as fallback.
-  echo "$RESPONSE"
+  printf '%s\n' "$RESPONSE"
 fi
