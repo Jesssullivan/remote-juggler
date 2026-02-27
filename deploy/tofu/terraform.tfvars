@@ -37,7 +37,7 @@ adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-1dc4ca5
 
 # Agent images (from individual repos)
 # renovate: image
-ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-fd9691b"
+ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-ec60faa"
 # renovate: image
 picoclaw_image     = "ghcr.io/tinyland-inc/tinyclaw:sha-c5c0a85"
 # renovate: image
