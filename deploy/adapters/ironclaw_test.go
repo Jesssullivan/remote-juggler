@@ -244,4 +244,17 @@ func TestIronclawBackend_DispatchEnrichedPrompt(t *testing.T) {
 			t.Errorf("prompt missing expected content: %q", check)
 		}
 	}
+
+	// Verify the exec tool definition is included in the payload.
+	toolsRaw, ok := payload["tools"].([]any)
+	if !ok || len(toolsRaw) == 0 {
+		t.Fatal("expected tools array in payload")
+	}
+	tool := toolsRaw[0].(map[string]any)
+	if tool["name"] != "exec" {
+		t.Errorf("expected tool name=exec, got %v", tool["name"])
+	}
+	if tool["type"] != "function" {
+		t.Errorf("expected tool type=function, got %v", tool["type"])
+	}
 }
