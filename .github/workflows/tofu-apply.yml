@@ -68,8 +68,11 @@ jobs:
         run: |
           # apply.sh resolves ALL secrets (including S3 backend creds) from
           # the gateway, so we just need init with the same creds.
-          # Run apply.sh with 'init' first, then 'apply'.
           ./apply.sh init -input=false
+          # Remove stale setec-seed job from state if it was cleaned up by
+          # K8s TTL (ttl_seconds_after_finished=300). Without this, tofu
+          # errors with "job is not in complete state" on re-apply.
+          tofu state rm 'kubernetes_job.setec_seed[0]' 2>/dev/null || true
           ./apply.sh apply -auto-approve
 
       - name: Verify pods healthy
