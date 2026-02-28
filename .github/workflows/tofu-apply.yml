@@ -85,17 +85,20 @@ jobs:
 
       - name: Verify pods healthy
         run: |
-          echo "Waiting 30s for rollout..."
-          sleep 30
-          kubectl get pods -n fuzzy-dev \
-            -l 'app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)' \
-            -o wide
-          # Check all pods are Running.
-          NOT_RUNNING=$(kubectl get pods -n fuzzy-dev \
-            -l 'app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)' \
-            -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}')
-          if [ -n "$NOT_RUNNING" ]; then
-            echo "::error::Pods not running: $NOT_RUNNING"
-            exit 1
-          fi
-          echo "All pods healthy"
+          LABELS='app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)'
+          # Retry up to 6 times (3 minutes total) — Civo volume attach can
+          # take 60-90s after Recreate strategy pod replacement.
+          for attempt in $(seq 1 6); do
+            echo "Check $attempt/6..."
+            kubectl get pods -n fuzzy-dev -l "$LABELS" -o wide
+            NOT_RUNNING=$(kubectl get pods -n fuzzy-dev -l "$LABELS" \
+              -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}')
+            if [ -z "$NOT_RUNNING" ]; then
+              echo "All pods healthy"
+              exit 0
+            fi
+            echo "Pods not running: $NOT_RUNNING — waiting 30s..."
+            sleep 30
+          done
+          echo "::error::Pods still not running after 3 minutes: $NOT_RUNNING"
+          exit 1
