@@ -128,10 +128,26 @@ func main() {
 
 	log.Printf("starting scheduler loop (interval=%s, %d campaigns)", *interval, len(registry))
 
+	// Wait for gateway readiness before startup checks.
+	// All pods restart together (Recreate strategy), so the gateway may not
+	// be ready when the campaign runner starts. Retry for up to 60s.
+	gatewayReady := false
+	for i := 0; i < 12; i++ {
+		if _, err := collector.CheckKillSwitch(ctx); err == nil {
+			gatewayReady = true
+			break
+		}
+		log.Printf("startup: waiting for gateway (attempt %d/12)...", i+1)
+		time.Sleep(5 * time.Second)
+	}
+	if !gatewayReady {
+		log.Printf("startup: gateway not reachable after 60s, continuing without startup checks")
+	}
+
 	// Startup: clear stale kill switch from previous deployment.
 	// Setec PVC persists kill switch state across pod restarts. Without this,
 	// every deploy blocks ALL campaigns until manual intervention.
-	if collector != nil {
+	if gatewayReady && collector != nil {
 		if killed, err := collector.CheckKillSwitch(ctx); err != nil {
 			log.Printf("startup: kill switch check failed: %v (continuing)", err)
 		} else if killed {
@@ -146,15 +162,17 @@ func main() {
 
 	// Post-deploy smoke test: run cc-gateway-health to validate the
 	// gateway, Setec, and dispatch pipeline before entering the main loop.
-	if smokeTest, ok := registry["cc-gateway-health"]; ok {
-		log.Printf("startup: running post-deploy smoke test (cc-gateway-health)")
-		smokeCtx, smokeCancel := context.WithTimeout(ctx, 2*time.Minute)
-		if err := scheduler.RunCampaign(smokeCtx, smokeTest); err != nil {
-			log.Printf("startup: smoke test failed: %v (non-fatal, continuing)", err)
-		} else {
-			log.Printf("startup: smoke test passed")
+	if gatewayReady {
+		if smokeTest, ok := registry["cc-gateway-health"]; ok {
+			log.Printf("startup: running post-deploy smoke test (cc-gateway-health)")
+			smokeCtx, smokeCancel := context.WithTimeout(ctx, 2*time.Minute)
+			if err := scheduler.RunCampaign(smokeCtx, smokeTest); err != nil {
+				log.Printf("startup: smoke test failed: %v (non-fatal, continuing)", err)
+			} else {
+				log.Printf("startup: smoke test passed")
+			}
+			smokeCancel()
 		}
-		smokeCancel()
 	}
 
 	ticker := time.NewTicker(*interval)
