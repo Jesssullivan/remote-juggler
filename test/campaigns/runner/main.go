@@ -147,15 +147,25 @@ func main() {
 	// Startup: clear stale kill switch from previous deployment.
 	// Setec PVC persists kill switch state across pod restarts. Without this,
 	// every deploy blocks ALL campaigns until manual intervention.
+	// Retry with verification: Setec may accept writes before fully persisting
+	// them during its own startup (race condition with tsnet auth).
 	if gatewayReady && collector != nil {
 		if killed, err := collector.CheckKillSwitch(ctx); err != nil {
 			log.Printf("startup: kill switch check failed: %v (continuing)", err)
 		} else if killed {
 			log.Printf("startup: kill switch active from previous deployment, auto-clearing")
-			if err := collector.ClearKillSwitch(ctx); err != nil {
-				log.Printf("startup: failed to clear kill switch: %v", err)
-			} else {
-				log.Printf("startup: kill switch cleared successfully")
+			for attempt := 0; attempt < 3; attempt++ {
+				if err := collector.ClearKillSwitch(ctx); err != nil {
+					log.Printf("startup: clear attempt %d failed: %v", attempt+1, err)
+					continue
+				}
+				// Verify the clear persisted (Setec startup race condition).
+				time.Sleep(2 * time.Second)
+				if still, _ := collector.CheckKillSwitch(ctx); !still {
+					log.Printf("startup: kill switch cleared and verified (attempt %d)", attempt+1)
+					break
+				}
+				log.Printf("startup: kill switch still active after clear (attempt %d), retrying...", attempt+1)
 			}
 		}
 	}
