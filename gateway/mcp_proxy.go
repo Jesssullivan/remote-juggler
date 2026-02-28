@@ -220,6 +220,7 @@ var gatewayToolNames = map[string]bool{
 	"github_get_alert":          true,
 	"github_create_branch":      true,
 	"github_update_file":        true,
+	"github_patch_file":         true,
 	"github_create_pr":          true,
 	"github_create_issue":       true,
 	"juggler_request_secret":    true,
@@ -508,6 +509,19 @@ func (p *MCPProxy) handleGatewayTool(id json.RawMessage, tool string, args json.
 			p.audit.Log(AuditEntry{
 				Caller:  caller,
 				Action:  "github_update_file",
+				Query:   fmt.Sprintf("%s/%s/%s@%s", a.Owner, a.Repo, a.Path, a.Branch),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_patch_file":
+		result, err = p.github.PatchFile(ctx, args)
+		if p.audit != nil {
+			var a struct{ Owner, Repo, Path, Branch string }
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_patch_file",
 				Query:   fmt.Sprintf("%s/%s/%s@%s", a.Owner, a.Repo, a.Path, a.Branch),
 				Allowed: err == nil,
 			})

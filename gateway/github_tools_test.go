@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -426,6 +427,144 @@ func TestGitHubRequestSecret(t *testing.T) {
 	json.Unmarshal([]byte(text), &parsed)
 	if parsed["created"] != true {
 		t.Errorf("expected created=true, got %v", parsed["created"])
+	}
+}
+
+func TestGitHubPatchFile(t *testing.T) {
+	originalContent := "name: CI\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
+	encoded := base64.StdEncoding.EncodeToString([]byte(originalContent))
+
+	var putContent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			json.NewEncoder(w).Encode(map[string]any{
+				"content":  encoded,
+				"encoding": "base64",
+				"sha":      "old-sha-123",
+			})
+		case http.MethodPut:
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			decoded, _ := base64.StdEncoding.DecodeString(body["content"].(string))
+			putContent = string(decoded)
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]any{
+				"content": map[string]any{
+					"sha":  "new-sha-456",
+					"path": ".github/workflows/ci.yml",
+				},
+			})
+		}
+	}))
+	defer server.Close()
+
+	h := newTestGitHubHandler(server)
+	args, _ := json.Marshal(map[string]string{
+		"owner":       "tinyland-inc",
+		"repo":        "remote-juggler",
+		"path":        ".github/workflows/ci.yml",
+		"old_content": "on: push",
+		"new_content": "on: push\n\npermissions:\n  contents: read",
+		"message":     "fix: add workflow permissions",
+		"branch":      "sid/fix-permissions",
+	})
+
+	result, err := h.PatchFile(context.Background(), args)
+	if err != nil {
+		t.Fatalf("PatchFile error: %v", err)
+	}
+
+	var resp map[string]any
+	json.Unmarshal(result, &resp)
+	contentArr := resp["content"].([]any)
+	text := contentArr[0].(map[string]any)["text"].(string)
+
+	var parsed map[string]any
+	json.Unmarshal([]byte(text), &parsed)
+	if parsed["patched"] != true {
+		t.Errorf("expected patched=true, got %v", parsed["patched"])
+	}
+
+	// Verify the PUT content has the patch applied correctly.
+	if putContent == "" {
+		t.Fatal("PUT was never called")
+	}
+	if !strings.Contains(putContent, "permissions:") {
+		t.Error("patched content should contain permissions block")
+	}
+	if !strings.Contains(putContent, "actions/checkout@v4") {
+		t.Error("patched content should preserve rest of file")
+	}
+}
+
+func TestGitHubPatchFile_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"message":"Not Found"}`))
+	}))
+	defer server.Close()
+
+	h := newTestGitHubHandler(server)
+	args, _ := json.Marshal(map[string]string{
+		"owner":       "tinyland-inc",
+		"repo":        "remote-juggler",
+		"path":        "nonexistent.yml",
+		"old_content": "foo",
+		"new_content": "bar",
+		"message":     "fix: test",
+		"branch":      "main",
+	})
+
+	result, err := h.PatchFile(context.Background(), args)
+	if err != nil {
+		t.Fatalf("PatchFile should not error on 404: %v", err)
+	}
+
+	var resp map[string]any
+	json.Unmarshal(result, &resp)
+	contentArr := resp["content"].([]any)
+	text := contentArr[0].(map[string]any)["text"].(string)
+	if !strings.Contains(text, "not found") {
+		t.Error("expected 'not found' error in response")
+	}
+}
+
+func TestGitHubPatchFile_OldContentMissing(t *testing.T) {
+	originalContent := "name: CI\non: push\n"
+	encoded := base64.StdEncoding.EncodeToString([]byte(originalContent))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{
+			"content":  encoded,
+			"encoding": "base64",
+			"sha":      "abc123",
+		})
+	}))
+	defer server.Close()
+
+	h := newTestGitHubHandler(server)
+	args, _ := json.Marshal(map[string]string{
+		"owner":       "tinyland-inc",
+		"repo":        "remote-juggler",
+		"path":        ".github/workflows/ci.yml",
+		"old_content": "this text does not exist in the file",
+		"new_content": "replacement",
+		"message":     "fix: test",
+		"branch":      "main",
+	})
+
+	result, err := h.PatchFile(context.Background(), args)
+	if err != nil {
+		t.Fatalf("PatchFile should not error on missing content: %v", err)
+	}
+
+	var resp map[string]any
+	json.Unmarshal(result, &resp)
+	contentArr := resp["content"].([]any)
+	text := contentArr[0].(map[string]any)["text"].(string)
+	if !strings.Contains(text, "not found") {
+		t.Error("expected 'not found' error when old_content doesn't match")
 	}
 }
 

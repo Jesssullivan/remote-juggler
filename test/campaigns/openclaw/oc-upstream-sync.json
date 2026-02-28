@@ -26,6 +26,7 @@
     "github_list_alerts",
     "github_create_branch",
     "github_update_file",
+    "github_patch_file",
     "github_create_pr",
     "juggler_audit_log",
     "juggler_setec_put"

@@ -273,6 +273,44 @@ func gatewayTools() []json.RawMessage {
 			},
 		},
 		{
+			"name":        "github_patch_file",
+			"description": "Apply a targeted find-and-replace edit to a file in a GitHub repository. Safer than github_update_file because it only changes the matched text, preserving the rest of the file. Replaces the first occurrence of old_content with new_content.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"path": map[string]any{
+						"type":        "string",
+						"description": "File path within the repository",
+					},
+					"old_content": map[string]any{
+						"type":        "string",
+						"description": "Exact text to find in the file (must match verbatim)",
+					},
+					"new_content": map[string]any{
+						"type":        "string",
+						"description": "Replacement text (use empty string to delete old_content)",
+					},
+					"message": map[string]any{
+						"type":        "string",
+						"description": "Commit message",
+					},
+					"branch": map[string]any{
+						"type":        "string",
+						"description": "Branch to commit to",
+					},
+				},
+				"required": []string{"owner", "repo", "path", "old_content", "new_content", "message", "branch"},
+			},
+		},
+		{
 			"name":        "github_create_pr",
 			"description": "Create a pull request in a GitHub repository.",
 			"inputSchema": map[string]any{

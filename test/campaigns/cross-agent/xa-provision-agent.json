@@ -20,6 +20,7 @@
     "github_fetch",
     "github_create_branch",
     "github_update_file",
+    "github_patch_file",
     "github_create_pr",
     "juggler_setec_put",
     "juggler_campaign_status"

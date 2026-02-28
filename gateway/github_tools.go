@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -476,6 +477,125 @@ func (h *GitHubToolHandler) CreateIssue(ctx context.Context, args json.RawMessag
 		"title":    issue.Title,
 		"state":    issue.State,
 		"created":  true,
+	})
+}
+
+// github_patch_file: GET file content, apply find/replace, then PUT updated content.
+// Unlike github_update_file which replaces the entire file, this tool makes targeted
+// edits by finding old_content and replacing it with new_content.
+func (h *GitHubToolHandler) PatchFile(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	var a struct {
+		Owner      string `json:"owner"`
+		Repo       string `json:"repo"`
+		Path       string `json:"path"`
+		OldContent string `json:"old_content"`
+		NewContent string `json:"new_content"`
+		Message    string `json:"message"`
+		Branch     string `json:"branch"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return nil, fmt.Errorf("parse args: %w", err)
+	}
+	if a.Owner == "" || a.Repo == "" || a.Path == "" || a.OldContent == "" || a.Message == "" || a.Branch == "" {
+		return nil, fmt.Errorf("owner, repo, path, old_content, message, and branch are required")
+	}
+
+	// Fetch current file content.
+	getURL := fmt.Sprintf("%s/repos/%s/%s/contents/%s?ref=%s", h.apiBase, a.Owner, a.Repo, a.Path, a.Branch)
+	resp, err := h.doRequest(ctx, http.MethodGet, getURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return mcpTextResult(map[string]any{
+			"error":  fmt.Sprintf("file not found: GitHub returned %d", resp.StatusCode),
+			"detail": truncateStr(string(body), 500),
+		})
+	}
+
+	var file struct {
+		Content  string `json:"content"`
+		Encoding string `json:"encoding"`
+		SHA      string `json:"sha"`
+	}
+	if err := json.Unmarshal(body, &file); err != nil {
+		return nil, fmt.Errorf("parse file response: %w", err)
+	}
+
+	// Decode content.
+	currentContent := file.Content
+	if file.Encoding == "base64" {
+		decoded, err := base64.StdEncoding.DecodeString(file.Content)
+		if err != nil {
+			return nil, fmt.Errorf("decode base64: %w", err)
+		}
+		currentContent = string(decoded)
+	}
+
+	// Count occurrences and apply patch.
+	count := strings.Count(currentContent, a.OldContent)
+	if count == 0 {
+		return mcpTextResult(map[string]any{
+			"error":       "old_content not found in file",
+			"path":        a.Path,
+			"branch":      a.Branch,
+			"file_length": len(currentContent),
+		})
+	}
+
+	// Replace first occurrence only (safer than replace-all).
+	patched := strings.Replace(currentContent, a.OldContent, a.NewContent, 1)
+
+	// PUT the patched content.
+	putURL := fmt.Sprintf("%s/repos/%s/%s/contents/%s", h.apiBase, a.Owner, a.Repo, a.Path)
+	payload := map[string]any{
+		"message": a.Message,
+		"content": base64.StdEncoding.EncodeToString([]byte(patched)),
+		"branch":  a.Branch,
+		"sha":     file.SHA,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	putResp, err := h.doRequest(ctx, http.MethodPut, putURL, payloadBytes)
+	if err != nil {
+		return nil, err
+	}
+	defer putResp.Body.Close()
+
+	putBody, err := io.ReadAll(putResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read put response: %w", err)
+	}
+
+	if putResp.StatusCode != http.StatusOK && putResp.StatusCode != http.StatusCreated {
+		return mcpTextResult(map[string]any{
+			"error":  fmt.Sprintf("patch file returned %d", putResp.StatusCode),
+			"detail": truncateStr(string(putBody), 500),
+		})
+	}
+
+	var result struct {
+		Content struct {
+			SHA  string `json:"sha"`
+			Path string `json:"path"`
+		} `json:"content"`
+	}
+	json.Unmarshal(putBody, &result)
+
+	return mcpTextResult(map[string]any{
+		"path":              result.Content.Path,
+		"sha":               result.Content.SHA,
+		"branch":            a.Branch,
+		"patched":           true,
+		"occurrences_found": count,
+		"replaced":          1,
 	})
 }
 

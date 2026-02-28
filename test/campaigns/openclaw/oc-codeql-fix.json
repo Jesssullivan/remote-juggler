@@ -26,13 +26,13 @@
     "github_list_alerts",
     "github_get_alert",
     "github_create_branch",
-    "github_update_file",
+    "github_patch_file",
     "github_create_pr"
   ],
   "process": [
     "Resolve GitHub token via juggler_resolve_composite",
     "List open CodeQL alerts. Prioritize actions/missing-workflow-permissions (low-risk YAML fixes)",
-    "For each fixable alert: fetch the file, understand the needed permissions, create a fix branch, commit the fix, open a PR",
+    "For each fixable alert: fetch the file, understand the needed permissions, create a fix branch, use github_patch_file to apply a targeted edit (NOT github_update_file which replaces the entire file), open a PR",
     "Track: alerts_examined, alerts_fixed, prs_created, alerts_skipped"
   ],
   "outputs": {
