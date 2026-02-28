@@ -25,7 +25,7 @@ locals {
 }
 
 resource "kubernetes_secret" "setec_seed" {
-  count = length(local.setec_seed_secrets) > 0 ? 1 : 0
+  count = !var.skip_setec_seed && length(local.setec_seed_secrets) > 0 ? 1 : 0
 
   metadata {
     name      = "setec-seed-data"
@@ -37,7 +37,7 @@ resource "kubernetes_secret" "setec_seed" {
 }
 
 resource "kubernetes_job" "setec_seed" {
-  count = length(local.setec_seed_secrets) > 0 ? 1 : 0
+  count = !var.skip_setec_seed && length(local.setec_seed_secrets) > 0 ? 1 : 0
 
   metadata {
     name      = "setec-seed-${substr(md5(join(",", keys(local.setec_seed_secrets))), 0, 8)}"

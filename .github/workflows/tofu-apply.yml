@@ -65,15 +65,19 @@ jobs:
           TF_VAR_github_token: ${{ secrets.RJ_GITHUB_TOKEN }}
           TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           TF_VAR_github_app_private_key: ${{ secrets.RJ_APP_PRIVATE_KEY }}
+          # Skip Setec seed job in CI — secrets are already in Setec from
+          # initial manual apply. The seed job pod can't reliably reach Setec
+          # during rolling restarts, causing 2m timeout failures.
+          TF_VAR_skip_setec_seed: "true"
         run: |
           # Init with S3 backend creds directly (apply.sh can't init without them).
           tofu init -input=false \
             -backend-config="access_key=$AWS_ACCESS_KEY_ID" \
             -backend-config="secret_key=$AWS_SECRET_ACCESS_KEY"
-          # Remove stale setec-seed job from state if it was cleaned up by
-          # K8s TTL (ttl_seconds_after_finished=300). Without this, tofu
-          # errors with "job is not in complete state" on re-apply.
+          # Remove stale setec-seed job/secret from state (cleaned up by K8s
+          # TTL or now skipped). Prevents "job is not in complete state" errors.
           tofu state rm 'kubernetes_job.setec_seed[0]' 2>/dev/null || true
+          tofu state rm 'kubernetes_secret.setec_seed[0]' 2>/dev/null || true
           # apply.sh resolve_or_env() skips gateway for secrets in env.
           # Optional secrets (gitlab_token, brave_api_key, SSH keys) default
           # to empty string when not in env and gateway is unreachable.

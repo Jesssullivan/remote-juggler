@@ -317,3 +317,9 @@ variable "github_app_private_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "skip_setec_seed" {
+  description = "Skip Setec seed job (secrets already in Setec). Used in CI to avoid timeout."
+  type        = bool
+  default     = false
+}
