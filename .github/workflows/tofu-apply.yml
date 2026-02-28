@@ -64,7 +64,7 @@ jobs:
           TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
           TF_VAR_github_token: ${{ secrets.RJ_GITHUB_TOKEN }}
           TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          TF_VAR_github_app_private_key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          TF_VAR_github_app_private_key: ${{ secrets.RJ_APP_PRIVATE_KEY }}
         run: |
           # Init with S3 backend creds directly (apply.sh can't init without them).
           tofu init -input=false \
