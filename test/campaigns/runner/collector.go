@@ -109,3 +109,13 @@ func (c *Collector) CheckKillSwitch(ctx context.Context) (bool, error) {
 	}
 	return false, nil
 }
+
+// ClearKillSwitch sets the global kill switch to "false" in Setec.
+// Used by the scheduler to auto-clear stale kill switches.
+func (c *Collector) ClearKillSwitch(ctx context.Context) error {
+	_, err := c.dispatcher.callTool(ctx, "juggler_setec_put", map[string]any{
+		"name":  "campaigns/global-kill",
+		"value": "false",
+	})
+	return err
+}

@@ -451,6 +451,46 @@ func TestE2EKillSwitch(t *testing.T) {
 	}
 }
 
+// TestE2EKillSwitchAutoClear verifies the scheduler auto-clears a stale kill switch.
+func TestE2EKillSwitchAutoClear(t *testing.T) {
+	gw := newMockGateway()
+	gw.secrets["campaigns/global-kill"] = "true"
+	server := httptest.NewServer(gw.Handler())
+	defer server.Close()
+
+	campaign := &Campaign{
+		ID:    "stale-kill-test",
+		Agent: "gateway-direct",
+		Tools: []string{"juggler_setec_list"},
+		Guardrails: Guardrails{
+			MaxDuration: "2m",
+		},
+		Outputs: CampaignOutputs{
+			SetecKey: "remotejuggler/campaigns/stale-kill-test",
+		},
+	}
+
+	dispatcher := NewDispatcher(server.URL, "", "", "")
+	collector := NewCollector(server.URL)
+	scheduler := NewScheduler(map[string]*Campaign{"stale-kill-test": campaign}, dispatcher, collector)
+
+	// Simulate that the kill switch has been active for longer than the max age.
+	scheduler.killSwitchActiveSince = time.Now().Add(-7 * time.Hour)
+
+	ctx := context.Background()
+	err := scheduler.RunCampaign(ctx, campaign)
+
+	// After auto-clear, the campaign should proceed (not return kill switch error).
+	if err != nil && err.Error() == "global kill switch active" {
+		t.Fatal("expected kill switch to be auto-cleared after staleness")
+	}
+
+	// Verify the kill switch was cleared in Setec.
+	if gw.secrets["campaigns/global-kill"] != "false" {
+		t.Errorf("kill switch not cleared: got %q", gw.secrets["campaigns/global-kill"])
+	}
+}
+
 // TestE2ECollectorStoresResult tests that collector writes to /latest and /runs/{runID}.
 func TestE2ECollectorStoresResult(t *testing.T) {
 	gw := newMockGateway()

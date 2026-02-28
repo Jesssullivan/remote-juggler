@@ -105,6 +105,60 @@ func TestCronMatches(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "comma day-of-week tue,fri on tuesday",
+			expr: "0 10 * * 2,5",
+			time: time.Date(2026, 3, 3, 10, 0, 0, 0, time.UTC), // Tuesday
+			want: true,
+		},
+		{
+			name: "comma day-of-week tue,fri on friday",
+			expr: "0 10 * * 2,5",
+			time: time.Date(2026, 3, 6, 10, 0, 0, 0, time.UTC), // Friday
+			want: true,
+		},
+		{
+			name: "comma day-of-week tue,fri on wednesday",
+			expr: "0 10 * * 2,5",
+			time: time.Date(2026, 3, 4, 10, 0, 0, 0, time.UTC), // Wednesday
+			want: false,
+		},
+		{
+			name: "comma day-of-month 1st,15th on 1st",
+			expr: "0 3 1,15 * *",
+			time: time.Date(2026, 3, 1, 3, 0, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			name: "comma day-of-month 1st,15th on 15th",
+			expr: "0 3 1,15 * *",
+			time: time.Date(2026, 3, 15, 3, 0, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			name: "comma day-of-month 1st,15th on 10th",
+			expr: "0 3 1,15 * *",
+			time: time.Date(2026, 3, 10, 3, 0, 0, 0, time.UTC),
+			want: false,
+		},
+		{
+			name: "step every 5 minutes at 0",
+			expr: "*/5 * * * *",
+			time: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			name: "step every 5 minutes at 15",
+			expr: "*/5 * * * *",
+			time: time.Date(2026, 3, 1, 12, 15, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			name: "step every 5 minutes at 3",
+			expr: "*/5 * * * *",
+			time: time.Date(2026, 3, 1, 12, 3, 0, 0, time.UTC),
+			want: false,
+		},
+		{
 			name: "invalid expression",
 			expr: "bad cron",
 			time: time.Now(),

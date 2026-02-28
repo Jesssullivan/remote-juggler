@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+// killSwitchMaxAge is the maximum duration a kill switch can remain active
+// before the scheduler auto-clears it and logs a warning. Prevents forgotten
+// kill switches from permanently halting all campaigns.
+const killSwitchMaxAge = 6 * time.Hour
+
 // Scheduler evaluates campaign triggers and orchestrates execution.
 type Scheduler struct {
 	registry      map[string]*Campaign
@@ -21,6 +26,10 @@ type Scheduler struct {
 	// completedRuns tracks successfully completed campaign IDs within the
 	// current scheduler cycle. Used for dependsOn evaluation.
 	completedRuns map[string]bool
+
+	// killSwitchActiveSince tracks when the kill switch was first seen active.
+	// Reset when the kill switch is cleared. Used for staleness detection.
+	killSwitchActiveSince time.Time
 
 	// OnResult is called after each campaign run with the result.
 	// Used by the API server to track latest results.
@@ -132,10 +141,34 @@ func (s *Scheduler) RunCampaign(ctx context.Context, campaign *Campaign) error {
 		if killed, err := s.collector.CheckKillSwitch(ctx); err != nil {
 			log.Printf("campaign %s: kill switch check error: %v (continuing)", campaign.ID, err)
 		} else if killed {
-			log.Printf("campaign %s: global kill switch active, skipping", campaign.ID)
+			// Track when kill switch was first seen active.
+			if s.killSwitchActiveSince.IsZero() {
+				s.killSwitchActiveSince = time.Now()
+			}
+
+			// Auto-clear if kill switch has been active too long.
+			age := time.Since(s.killSwitchActiveSince)
+			if age > killSwitchMaxAge {
+				log.Printf("campaign %s: kill switch stale (active for %v > %v), auto-clearing",
+					campaign.ID, age.Round(time.Minute), killSwitchMaxAge)
+				if clearErr := s.collector.ClearKillSwitch(ctx); clearErr != nil {
+					log.Printf("campaign %s: failed to auto-clear kill switch: %v", campaign.ID, clearErr)
+				} else {
+					s.killSwitchActiveSince = time.Time{}
+					log.Printf("campaign %s: kill switch auto-cleared, resuming", campaign.ID)
+					// Fall through to continue executing the campaign.
+					goto killSwitchCleared
+				}
+			}
+
+			log.Printf("campaign %s: global kill switch active (for %v), skipping", campaign.ID, age.Round(time.Second))
 			return fmt.Errorf("global kill switch active")
+		} else {
+			// Kill switch is off — reset tracking.
+			s.killSwitchActiveSince = time.Time{}
 		}
 	}
+killSwitchCleared:
 
 	result := &CampaignResult{
 		CampaignID: campaign.ID,
@@ -299,10 +332,37 @@ func cronMatches(expr string, t time.Time) bool {
 }
 
 // cronFieldMatches checks if a single cron field matches a value.
+// Supports: * (any), single numbers, comma-separated lists (e.g., "1,15"),
+// and step expressions (e.g., "*/5").
 func cronFieldMatches(field string, value int) bool {
 	if field == "*" {
 		return true
 	}
+
+	// Step expression: */N matches when value % N == 0.
+	if strings.HasPrefix(field, "*/") {
+		step, err := strconv.Atoi(field[2:])
+		if err != nil || step <= 0 {
+			return false
+		}
+		return value%step == 0
+	}
+
+	// Comma-separated list: "1,15" or "2,5".
+	if strings.Contains(field, ",") {
+		for _, part := range strings.Split(field, ",") {
+			n, err := strconv.Atoi(strings.TrimSpace(part))
+			if err != nil {
+				continue
+			}
+			if n == value {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Single number.
 	n, err := strconv.Atoi(field)
 	if err != nil {
 		return false
