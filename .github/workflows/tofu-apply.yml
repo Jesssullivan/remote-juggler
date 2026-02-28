@@ -1,0 +1,94 @@
+# Auto-apply OpenTofu after image tag changes in terraform.tfvars.
+#
+# Triggers on pushes to main that modify terraform.tfvars (e.g., Renovate
+# merging container image bumps). Resolves secrets via port-forward to the
+# in-cluster rj-gateway, then runs `tofu apply -auto-approve`.
+#
+# This closes the last manual step in the deployment pipeline:
+#   GHCR build → Renovate PR → automerge → tofu apply (this workflow)
+name: Tofu Auto-Apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/tofu/terraform.tfvars'
+      - 'deploy/tofu/*.tf'
+  workflow_dispatch:
+
+# Only one apply at a time.
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    # Skip if the commit is from this workflow (prevent loops).
+    if: "!contains(github.event.head_commit.message, '[skip-tofu]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: '1.9.0'
+
+      - name: Install Civo CLI
+        run: |
+          curl -sL https://civo.com/get | sh
+          echo "/usr/local/bin" >> "$GITHUB_PATH"
+
+      - name: Configure kubeconfig
+        env:
+          CIVO_TOKEN: ${{ secrets.CIVO_TOKEN }}
+        run: |
+          mkdir -p ~/.kube
+          civo kubernetes config bitter-darkness-16657317 --save
+          echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
+
+      - name: Port-forward to rj-gateway
+        run: |
+          kubectl port-forward -n fuzzy-dev deploy/rj-gateway 8443:8080 &
+          PF_PID=$!
+          echo "PF_PID=$PF_PID" >> "$GITHUB_ENV"
+          # Wait for port-forward to be ready.
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8443/health >/dev/null 2>&1; then
+              echo "Gateway reachable"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Init + Apply
+        working-directory: deploy/tofu
+        env:
+          RJ_GATEWAY_URL: http://localhost:8443
+        run: |
+          # apply.sh resolves ALL secrets (including S3 backend creds) from
+          # the gateway, so we just need init with the same creds.
+          # Run apply.sh with 'init' first, then 'apply'.
+          ./apply.sh init -input=false
+          ./apply.sh apply -auto-approve
+
+      - name: Verify pods healthy
+        run: |
+          echo "Waiting 30s for rollout..."
+          sleep 30
+          kubectl get pods -n fuzzy-dev \
+            -l 'app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)' \
+            -o wide
+          # Check all pods are Running.
+          NOT_RUNNING=$(kubectl get pods -n fuzzy-dev \
+            -l 'app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)' \
+            -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}')
+          if [ -n "$NOT_RUNNING" ]; then
+            echo "::error::Pods not running: $NOT_RUNNING"
+            exit 1
+          fi
+          echo "All pods healthy"
+
+      - name: Cleanup port-forward
+        if: always()
+        run: kill $PF_PID 2>/dev/null || true

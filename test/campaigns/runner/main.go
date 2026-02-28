@@ -128,6 +128,35 @@ func main() {
 
 	log.Printf("starting scheduler loop (interval=%s, %d campaigns)", *interval, len(registry))
 
+	// Startup: clear stale kill switch from previous deployment.
+	// Setec PVC persists kill switch state across pod restarts. Without this,
+	// every deploy blocks ALL campaigns until manual intervention.
+	if collector != nil {
+		if killed, err := collector.CheckKillSwitch(ctx); err != nil {
+			log.Printf("startup: kill switch check failed: %v (continuing)", err)
+		} else if killed {
+			log.Printf("startup: kill switch active from previous deployment, auto-clearing")
+			if err := collector.ClearKillSwitch(ctx); err != nil {
+				log.Printf("startup: failed to clear kill switch: %v", err)
+			} else {
+				log.Printf("startup: kill switch cleared successfully")
+			}
+		}
+	}
+
+	// Post-deploy smoke test: run cc-gateway-health to validate the
+	// gateway, Setec, and dispatch pipeline before entering the main loop.
+	if smokeTest, ok := registry["cc-gateway-health"]; ok {
+		log.Printf("startup: running post-deploy smoke test (cc-gateway-health)")
+		smokeCtx, smokeCancel := context.WithTimeout(ctx, 2*time.Minute)
+		if err := scheduler.RunCampaign(smokeCtx, smokeTest); err != nil {
+			log.Printf("startup: smoke test failed: %v (non-fatal, continuing)", err)
+		} else {
+			log.Printf("startup: smoke test passed")
+		}
+		smokeCancel()
+	}
+
 	ticker := time.NewTicker(*interval)
 	defer ticker.Stop()
 
