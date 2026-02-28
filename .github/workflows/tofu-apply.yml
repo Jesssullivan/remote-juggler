@@ -44,7 +44,7 @@ jobs:
           CIVO_TOKEN: ${{ secrets.CIVO_TOKEN }}
         run: |
           mkdir -p ~/.kube
-          civo kubernetes config bitter-darkness-16657317 --save
+          civo kubernetes config tinyland-civo-dev --save
           echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
 
       - name: Port-forward to rj-gateway

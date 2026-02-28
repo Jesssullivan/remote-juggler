@@ -52,6 +52,27 @@ resource "kubernetes_persistent_volume_claim" "hexstrike_workspace" {
   }
 }
 
+# ConfigMap for workspace defaults.
+# Since HexStrike is Nix-built (no /bin/sh in image), workspace files are
+# delivered via ConfigMap instead of copying from the image in an init container.
+# Updated on every `tofu apply` — init container syncs to PVC with no-clobber.
+resource "kubernetes_config_map" "hexstrike_workspace" {
+  metadata {
+    name      = "hexstrike-workspace"
+    namespace = kubernetes_namespace.main.metadata[0].name
+    labels    = merge(local.labels, { app = "hexstrike-ai-agent" })
+  }
+
+  data = {
+    "AGENT.md"     = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/AGENT.md")
+    "HEARTBEAT.md" = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/HEARTBEAT.md")
+    "IDENTITY.md"  = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/IDENTITY.md")
+    "SOUL.md"      = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/SOUL.md")
+    "TOOLS.md"     = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/TOOLS.md")
+    "MEMORY.md"    = file("${path.module}/../fork-dockerfiles/hexstrike-ai/workspace/memory/MEMORY.md")
+  }
+}
+
 # ConfigMap for Dhall-compiled policy JSON.
 # Overrides the baked-in /compiled/policy.json from the Nix image so that
 # policy updates can be deployed without rebuilding the container.
@@ -116,16 +137,33 @@ resource "kubernetes_deployment" "hexstrike" {
           fs_group = 10000
         }
 
-        # Workspace init: ensure PVC directories exist.
-        # Nix-built images have no /bin/sh, so use busybox for init.
+        # Workspace init: sync defaults from ConfigMap to PVC with no-clobber.
+        # Nix-built images have no /bin/sh, so workspace files are delivered
+        # via ConfigMap and synced here with busybox.
         init_container {
           name  = "workspace-init"
           image = "busybox:1.37"
           command = ["/bin/sh", "-c", <<-EOT
-            mkdir -p /workspace /results
-            echo "Workspace directories initialized"
+            mkdir -p /workspace /results /workspace/memory
+            # Sync workspace files: add new without overwriting existing.
+            for f in /workspace-defaults/*.md; do
+              base=$(basename "$f")
+              if [ "$base" = "MEMORY.md" ]; then
+                # MEMORY.md goes into memory/ subdirectory.
+                cp -n "$f" /workspace/memory/MEMORY.md 2>/dev/null || true
+              else
+                cp -n "$f" /workspace/"$base" 2>/dev/null || true
+              fi
+            done
+            echo "Workspace synced from ConfigMap (new files added, existing preserved)"
+            ls -la /workspace/
           EOT
           ]
+          volume_mount {
+            name       = "workspace-defaults"
+            mount_path = "/workspace-defaults"
+            read_only  = true
+          }
           volume_mount {
             name       = "workspace"
             mount_path = "/workspace"
@@ -302,6 +340,14 @@ resource "kubernetes_deployment" "hexstrike" {
           name = "results"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.hexstrike_results.metadata[0].name
+          }
+        }
+
+        # Workspace defaults from ConfigMap — init container syncs to PVC.
+        volume {
+          name = "workspace-defaults"
+          config_map {
+            name = kubernetes_config_map.hexstrike_workspace.metadata[0].name
           }
         }
 
