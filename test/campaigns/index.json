@@ -32,6 +32,18 @@
       "lastRun": null,
       "lastResult": null
     },
+    "cc-cron-monitor": {
+      "file": "gateway-direct/cc-cron-monitor.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "cc-stale-issues": {
+      "file": "gateway-direct/cc-stale-issues.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
     "oc-gateway-smoketest": {
       "file": "openclaw/oc-gateway-smoketest.json",
       "enabled": true,

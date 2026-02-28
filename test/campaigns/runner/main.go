@@ -45,40 +45,8 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
 	log.SetPrefix("campaign-runner: ")
 
-	// Load campaign index.
-	indexPath := filepath.Join(*campaignsDir, "index.json")
-	index, err := LoadIndex(indexPath)
-	if err != nil {
-		log.Fatalf("load index: %v", err)
-	}
-	log.Printf("loaded %d campaigns from %s", len(index.Campaigns), indexPath)
-
-	// Load all campaign definitions.
-	registry := make(map[string]*Campaign)
-	for id, entry := range index.Campaigns {
-		if !entry.Enabled {
-			log.Printf("campaign %s: disabled, skipping", id)
-			continue
-		}
-		defPath := filepath.Join(*campaignsDir, entry.File)
-		// Fallback: ConfigMap mounts files flat (no subdirectories),
-		// but index.json references paths like "gateway-direct/cc-gateway-health.json".
-		// Try the basename if the full path doesn't exist.
-		if _, statErr := os.Stat(defPath); os.IsNotExist(statErr) {
-			defPath = filepath.Join(*campaignsDir, filepath.Base(entry.File))
-		}
-		campaign, err := LoadCampaign(defPath)
-		if err != nil {
-			log.Printf("campaign %s: load error: %v", id, err)
-			continue
-		}
-		if campaign.ID != id {
-			log.Printf("campaign %s: ID mismatch (file says %s)", id, campaign.ID)
-			continue
-		}
-		registry[id] = campaign
-		log.Printf("campaign %s: loaded (%s, agent=%s)", id, campaign.Name, campaign.Agent)
-	}
+	// Load campaign definitions from ConfigMap directory.
+	registry := loadCampaigns(*campaignsDir)
 
 	// Resolve hexstrike-ai URL: prefer new flag, fall back to legacy alias.
 	hsURL := *hexstrikeAIURL
@@ -163,6 +131,13 @@ func main() {
 	ticker := time.NewTicker(*interval)
 	defer ticker.Stop()
 
+	// ConfigMap hot-reload: re-scan campaigns directory periodically.
+	// K8s updates ConfigMaps in-place (symlink swap), so we re-read
+	// the directory to pick up new/changed campaign definitions without
+	// requiring a pod restart.
+	reloadTicker := time.NewTicker(5 * time.Minute)
+	defer reloadTicker.Stop()
+
 	// Run immediately on start.
 	scheduler.RunDue(ctx)
 
@@ -170,6 +145,13 @@ func main() {
 		select {
 		case <-ticker.C:
 			scheduler.RunDue(ctx)
+		case <-reloadTicker.C:
+			updated := loadCampaigns(*campaignsDir)
+			if len(updated) != len(registry) {
+				log.Printf("hot-reload: campaign count changed %d -> %d", len(registry), len(updated))
+			}
+			registry = updated
+			scheduler.UpdateRegistry(updated)
 		case <-done:
 			log.Println("shutting down")
 			cancel()
@@ -253,6 +235,44 @@ func resolveGitHubToken() string {
 		return t
 	}
 	return ""
+}
+
+// loadCampaigns loads all enabled campaign definitions from a directory.
+// Returns a registry map keyed by campaign ID.
+func loadCampaigns(dir string) map[string]*Campaign {
+	indexPath := filepath.Join(dir, "index.json")
+	index, err := LoadIndex(indexPath)
+	if err != nil {
+		log.Printf("load index: %v", err)
+		return nil
+	}
+	log.Printf("loaded %d campaigns from %s", len(index.Campaigns), indexPath)
+
+	registry := make(map[string]*Campaign)
+	for id, entry := range index.Campaigns {
+		if !entry.Enabled {
+			continue
+		}
+		defPath := filepath.Join(dir, entry.File)
+		// Fallback: ConfigMap mounts files flat (no subdirectories),
+		// but index.json references paths like "gateway-direct/cc-gateway-health.json".
+		// Try the basename if the full path doesn't exist.
+		if _, statErr := os.Stat(defPath); os.IsNotExist(statErr) {
+			defPath = filepath.Join(dir, filepath.Base(entry.File))
+		}
+		campaign, err := LoadCampaign(defPath)
+		if err != nil {
+			log.Printf("campaign %s: load error: %v", id, err)
+			continue
+		}
+		if campaign.ID != id {
+			log.Printf("campaign %s: ID mismatch (file says %s)", id, campaign.ID)
+			continue
+		}
+		registry[id] = campaign
+		log.Printf("campaign %s: loaded (%s, agent=%s)", id, campaign.Name, campaign.Agent)
+	}
+	return registry
 }
 
 // LoadIndex loads the campaign index from a JSON file.

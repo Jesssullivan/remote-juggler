@@ -46,6 +46,12 @@ func NewScheduler(registry map[string]*Campaign, dispatcher *Dispatcher, collect
 	}
 }
 
+// UpdateRegistry replaces the campaign registry with a new set of definitions.
+// Called by ConfigMap hot-reload to pick up changes without pod restart.
+func (s *Scheduler) UpdateRegistry(registry map[string]*Campaign) {
+	s.registry = registry
+}
+
 // SetFeedback configures the feedback handler for issue creation/closure.
 func (s *Scheduler) SetFeedback(handler *FeedbackHandler) {
 	s.feedback = handler

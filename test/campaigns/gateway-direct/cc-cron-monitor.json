@@ -1,0 +1,59 @@
+{
+  "id": "cc-cron-monitor",
+  "name": "Campaign Schedule Monitor",
+  "description": "Monitors whether scheduled campaigns are firing on time. Queries Setec for last-run timestamps of all enabled campaigns and creates an issue if any campaign has missed its expected schedule by more than 2x the interval.",
+  "agent": "gateway-direct",
+  "trigger": {
+    "schedule": "30 */6 * * *",
+    "event": "manual"
+  },
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "tools": [
+    "juggler_setec_list",
+    "juggler_setec_get",
+    "juggler_campaign_status",
+    "github_create_issue"
+  ],
+  "process": [
+    "Call juggler_campaign_status to get campaign runner state and last run times",
+    "Call juggler_setec_list with prefix 'remotejuggler/campaigns/' to enumerate stored results",
+    "For each campaign with a cron schedule, call juggler_setec_get on its /latest key",
+    "Parse the startedAt timestamp from each result and compare to current time",
+    "If any campaign's last run is older than 2x its cron interval, report as stale",
+    "Create a GitHub issue listing stale campaigns if any are found"
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/cc-cron-monitor",
+    "issueLabels": [
+      "campaign",
+      "monitoring",
+      "cron"
+    ],
+    "issueRepo": "tinyland-inc/remote-juggler"
+  },
+  "guardrails": {
+    "maxDuration": "3m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": true,
+    "createPRs": false,
+    "closeResolvedIssues": true,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "All scheduled campaigns have run within 2x their expected interval",
+    "kpis": [
+      "campaigns_checked",
+      "campaigns_stale",
+      "oldest_gap_hours"
+    ]
+  }
+}

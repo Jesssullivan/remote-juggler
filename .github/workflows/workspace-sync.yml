@@ -1,0 +1,101 @@
+# Sync workspace files, configs, and Dockerfiles to agent fork repos.
+#
+# Triggers on changes to deploy/fork-dockerfiles/ and runs push-to-forks.sh
+# for affected agents. Creates PRs on each agent repo, merges them, and
+# waits for GHCR builds to produce new images.
+#
+# This replaces the manual `./push-to-forks.sh` step, removing a
+# human-in-the-loop bottleneck from the deployment pipeline.
+name: Workspace Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/fork-dockerfiles/**'
+  workflow_dispatch:
+    inputs:
+      agents:
+        description: 'Agents to sync (comma-separated, or "all")'
+        required: false
+        default: 'all'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ironclaw: ${{ steps.changes.outputs.ironclaw }}
+      picoclaw: ${{ steps.changes.outputs.picoclaw }}
+      hexstrike-ai: ${{ steps.changes.outputs.hexstrike-ai }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed agents
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            input="${{ github.event.inputs.agents }}"
+            if [[ "$input" == "all" || -z "$input" ]]; then
+              echo "ironclaw=true" >> "$GITHUB_OUTPUT"
+              echo "picoclaw=true" >> "$GITHUB_OUTPUT"
+              echo "hexstrike-ai=true" >> "$GITHUB_OUTPUT"
+            else
+              for agent in ironclaw picoclaw hexstrike-ai; do
+                if echo "$input" | grep -q "$agent"; then
+                  echo "${agent}=true" >> "$GITHUB_OUTPUT"
+                else
+                  echo "${agent}=false" >> "$GITHUB_OUTPUT"
+                fi
+              done
+            fi
+          else
+            changed=$(git diff --name-only HEAD~1 HEAD)
+            for agent in ironclaw picoclaw hexstrike-ai; do
+              if echo "$changed" | grep -q "deploy/fork-dockerfiles/${agent}/"; then
+                echo "${agent}=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "${agent}=false" >> "$GITHUB_OUTPUT"
+              fi
+            done
+          fi
+
+      - name: Summary
+        run: |
+          echo "### Workspace Sync Targets" >> "$GITHUB_STEP_SUMMARY"
+          echo "- IronClaw: ${{ steps.changes.outputs.ironclaw }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PicoClaw: ${{ steps.changes.outputs.picoclaw }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- HexStrike-AI: ${{ steps.changes.outputs.hexstrike-ai }}" >> "$GITHUB_STEP_SUMMARY"
+
+  sync:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - agent: ironclaw
+            enabled: ${{ needs.detect-changes.outputs.ironclaw }}
+          - agent: picoclaw
+            enabled: ${{ needs.detect-changes.outputs.picoclaw }}
+          - agent: hexstrike-ai
+            enabled: ${{ needs.detect-changes.outputs.hexstrike-ai }}
+    if: |
+      needs.detect-changes.outputs.ironclaw == 'true' ||
+      needs.detect-changes.outputs.picoclaw == 'true' ||
+      needs.detect-changes.outputs.hexstrike-ai == 'true'
+    steps:
+      - name: Skip if not changed
+        if: matrix.enabled != 'true'
+        run: echo "No changes for ${{ matrix.agent }}, skipping"
+
+      - uses: actions/checkout@v4
+        if: matrix.enabled == 'true'
+
+      - name: Sync to fork repo
+        if: matrix.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+        run: |
+          ./deploy/fork-dockerfiles/push-to-forks.sh ${{ matrix.agent }}

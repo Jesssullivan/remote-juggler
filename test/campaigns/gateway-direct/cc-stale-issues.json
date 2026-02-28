@@ -1,0 +1,58 @@
+{
+  "id": "cc-stale-issues",
+  "name": "Stale Issue Cleanup",
+  "description": "Reviews open GitHub issues created by rj-agent-bot and closes those that are stale (no activity for 7+ days) or resolved (finding no longer present in latest campaign results). Prevents issue sprawl from automated feedback.",
+  "agent": "gateway-direct",
+  "trigger": {
+    "schedule": "0 8 * * 1",
+    "event": "manual"
+  },
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "tools": [
+    "github_fetch",
+    "juggler_setec_list",
+    "juggler_setec_get",
+    "juggler_campaign_status"
+  ],
+  "process": [
+    "Use github_fetch to list open issues with label 'campaign' created by rj-agent-bot",
+    "For each issue, extract the campaign ID and finding hash from the issue body",
+    "Call juggler_setec_get on the campaign's /latest key to get current findings",
+    "If the finding is no longer present in the latest result, mark the issue as resolved",
+    "If the issue has had no activity for 7+ days and finding is gone, close it with a comment",
+    "Report how many issues were reviewed and how many were closed"
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/cc-stale-issues",
+    "issueLabels": [
+      "campaign",
+      "housekeeping"
+    ],
+    "issueRepo": "tinyland-inc/remote-juggler"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": false
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "closeResolvedIssues": false,
+    "publishOnSuccess": true
+  },
+  "metrics": {
+    "successCriteria": "Issues reviewed and stale ones closed successfully",
+    "kpis": [
+      "issues_reviewed",
+      "issues_closed",
+      "issues_kept_open"
+    ]
+  }
+}

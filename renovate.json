@@ -23,7 +23,8 @@
         "ghcr.io/tinyland-inc/remote-juggler/*"
       ],
       "groupName": "container images",
-      "automerge": false
+      "automerge": true,
+      "automergeType": "pr"
     },
     {
       "description": "Tailscale Helm chart",
@@ -64,11 +65,12 @@
       ],
       "matchPackagePatterns": [
         "ghcr.io/tinyland-inc/ironclaw",
-        "ghcr.io/tinyland-inc/picoclaw",
+        "ghcr.io/tinyland-inc/tinyclaw",
         "ghcr.io/tinyland-inc/hexstrike-ai"
       ],
       "groupName": "fork agent images",
-      "automerge": false
+      "automerge": true,
+      "automergeType": "pr"
     }
   ],
   "customManagers": [
@@ -80,6 +82,18 @@
       ],
       "matchStrings": [
         "default\\s*=\\s*\"(?<depName>[^:]+):(?<currentValue>[^\"]+)\"\\s*#\\s*renovate:\\s*image"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Tofu tfvars image assignments with # renovate: image comments",
+      "fileMatch": [
+        "deploy/tofu/terraform\\.tfvars$"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*image\\n\\w+\\s*=\\s*\"(?<depName>[^:]+):(?<currentValue>[^\"]+)\""
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
