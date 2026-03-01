@@ -59,11 +59,11 @@ The campaign runner is a Go sidecar in the OpenClaw pod that orchestrates all ca
 <!-- AGENT-STATUS:START -->
 ### Agent Ecosystem Status
 
-Last updated: 2026-02-28 18:16 UTC
+Last updated: 2026-03-01 01:09 UTC
 
 | Campaign | Agent | Last Run | Status | Key Metric |
 |----------|-------|----------|--------|------------|
-| Gateway Health | gateway-direct | 13h ago | PASS | -- |
+| Gateway Health | gateway-direct | 20h ago | PASS | -- |
 | Dependency Audit | openclaw | -- | -- | -- |
 | Credential Scan | hexstrike | -- | -- | -- |
 | Gateway Smoketest | openclaw | -- | -- | -- |
