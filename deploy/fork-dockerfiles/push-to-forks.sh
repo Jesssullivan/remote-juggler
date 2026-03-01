@@ -70,8 +70,6 @@ push_repo() {
       fi
       ;;
     tinyclaw)
-      # TinyClaw repo is still tinyland-inc/picoclaw on GitHub
-      repo="tinyland-inc/picoclaw"
       cp "${src_dir}/Dockerfile" "${repo_dir}/Dockerfile"
       cp "${src_dir}/config.json" "${repo_dir}/tinyland/config.json"
       cp "${src_dir}/entrypoint.sh" "${repo_dir}/tinyland/entrypoint.sh"

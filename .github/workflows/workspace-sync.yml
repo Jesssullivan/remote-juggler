@@ -104,4 +104,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
         run: |
+          gh auth setup-git
           ./deploy/fork-dockerfiles/push-to-forks.sh ${{ matrix.agent }}
