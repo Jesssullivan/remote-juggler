@@ -18,6 +18,9 @@ on:
       - 'deploy/adapters/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   # =========================================================================
   # Gateway Tests (Go)

@@ -149,8 +149,11 @@ func (a *AuditLog) Recent(n int) []AuditEntry {
 	if n > total {
 		n = total
 	}
+	if n == 0 {
+		return nil
+	}
 	// Return in reverse order (newest first).
-	result := make([]AuditEntry, n)
+	result := make([]AuditEntry, n) //nolint:gosec // n is bounded by maxReturn and total above
 	for i := 0; i < n; i++ {
 		result[i] = a.entries[total-1-i]
 	}

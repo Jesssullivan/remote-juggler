@@ -11,6 +11,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   CHAPEL_VERSION: "2.7.0"
   CARGO_TERM_COLOR: always
