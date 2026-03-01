@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Push Dockerfiles, configs, and workspace files to each agent repo.
 #
-# Usage: ./push-to-forks.sh [--dry-run] [ironclaw|picoclaw|hexstrike-ai]
+# Usage: ./push-to-forks.sh [--dry-run] [ironclaw|tinyclaw|hexstrike-ai]
 #
 # Prerequisites:
 #   - gh CLI authenticated to tinyland-inc org
@@ -26,14 +26,14 @@ REPOS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    ironclaw|picoclaw|hexstrike-ai) REPOS+=("$1"); shift ;;
+    ironclaw|tinyclaw|hexstrike-ai) REPOS+=("$1"); shift ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac
 done
 
 # Default: all repos
 if [[ ${#REPOS[@]} -eq 0 ]]; then
-  REPOS=(ironclaw picoclaw hexstrike-ai)
+  REPOS=(ironclaw tinyclaw hexstrike-ai)
 fi
 
 push_repo() {
@@ -69,7 +69,9 @@ push_repo() {
         cp -r "${src_dir}/workspace" "${repo_dir}/tinyland/workspace"
       fi
       ;;
-    picoclaw)
+    tinyclaw)
+      # TinyClaw repo is still tinyland-inc/picoclaw on GitHub
+      repo="tinyland-inc/picoclaw"
       cp "${src_dir}/Dockerfile" "${repo_dir}/Dockerfile"
       cp "${src_dir}/config.json" "${repo_dir}/tinyland/config.json"
       cp "${src_dir}/entrypoint.sh" "${repo_dir}/tinyland/entrypoint.sh"

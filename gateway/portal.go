@@ -30,8 +30,8 @@ func handlePortalAPI(audit *AuditLog, meterStore *MeterStore) http.HandlerFunc {
 				"adapter": true,
 			},
 			{
-				"name":    "PicoClaw",
-				"type":    "picoclaw",
+				"name":    "TinyClaw",
+				"type":    "tinyclaw",
 				"url":     "",
 				"role":    "Lightweight scanning (dead code, TypeScript strict, a11y)",
 				"adapter": true,

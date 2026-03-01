@@ -9,9 +9,9 @@ import (
 )
 
 // fetchGatewayTools retrieves the MCP tool definitions from rj-gateway
-// and converts them to OpenAI-compatible function tool format for PicoClaw.
-// PicoClaw lacks native MCP support (upstream issue #290), so this proxy
-// bridges the gap by registering gateway tools in PicoClaw's format.
+// and converts them to OpenAI-compatible function tool format for TinyClaw.
+// TinyClaw lacks native MCP support (upstream issue #290), so this proxy
+// bridges the gap by registering gateway tools in TinyClaw's format.
 func fetchGatewayTools(client *http.Client, gatewayURL string) ([]map[string]any, error) {
 	// Request tool list from gateway via MCP JSON-RPC.
 	payload := map[string]any{

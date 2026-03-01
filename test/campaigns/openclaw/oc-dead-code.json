@@ -2,7 +2,7 @@
   "id": "oc-dead-code",
   "name": "Dead Code Detection",
   "description": "Detects unused exports, orphan modules, and dead code across key TypeScript and Go repos. Creates removal PRs for confirmed dead code.",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 3 1,15 * *",
     "event": "manual"

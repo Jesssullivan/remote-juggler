@@ -2,7 +2,7 @@
   "id": "oc-ts-strict",
   "name": "TypeScript Strict Mode Tracking",
   "description": "Tracks TypeScript strict mode adoption across all TS repos. Analyzes tsconfig.json settings, counts type errors in strict mode, and tracks migration progress over time.",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 2 1 * *",
     "event": "manual"

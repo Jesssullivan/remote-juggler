@@ -375,6 +375,135 @@ func gatewayTools() []json.RawMessage {
 				"required": []string{"owner", "repo", "title"},
 			},
 		},
+		// --- Discussion tools (GraphQL) ---
+		{
+			"name":        "github_discussion_list",
+			"description": "List discussions in a GitHub repository, optionally filtered by category.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"category": map[string]any{
+						"type":        "string",
+						"description": "Category node ID to filter by (optional)",
+					},
+					"first": map[string]any{
+						"type":        "integer",
+						"description": "Number of discussions to return (default: 25, max: 100)",
+					},
+				},
+				"required": []string{"owner", "repo"},
+			},
+		},
+		{
+			"name":        "github_discussion_get",
+			"description": "Get a single discussion by number, including comments.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"number": map[string]any{
+						"type":        "integer",
+						"description": "Discussion number",
+					},
+				},
+				"required": []string{"owner", "repo", "number"},
+			},
+		},
+		{
+			"name":        "github_discussion_search",
+			"description": "Search discussions in a repository by query string.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"query": map[string]any{
+						"type":        "string",
+						"description": "Search query (scoped to repo discussions automatically)",
+					},
+					"first": map[string]any{
+						"type":        "integer",
+						"description": "Number of results to return (default: 10, max: 100)",
+					},
+				},
+				"required": []string{"owner", "repo", "query"},
+			},
+		},
+		{
+			"name":        "github_discussion_reply",
+			"description": "Add a comment to a discussion. Supports rj-meta HTML comments for structured agent-to-agent communication.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"number": map[string]any{
+						"type":        "integer",
+						"description": "Discussion number",
+					},
+					"body": map[string]any{
+						"type":        "string",
+						"description": "Comment body (markdown). Include <!-- rj-meta {...} --> for structured metadata.",
+					},
+				},
+				"required": []string{"owner", "repo", "number", "body"},
+			},
+		},
+		{
+			"name":        "github_discussion_label",
+			"description": "Add labels to a discussion for routing and state tracking.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner": map[string]any{
+						"type":        "string",
+						"description": "Repository owner (user or org)",
+					},
+					"repo": map[string]any{
+						"type":        "string",
+						"description": "Repository name",
+					},
+					"number": map[string]any{
+						"type":        "integer",
+						"description": "Discussion number",
+					},
+					"labels": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Label names to add (e.g. 'agent:hexstrike-ai', 'handoff:ironclaw', 'state:acknowledged')",
+					},
+				},
+				"required": []string{"owner", "repo", "number", "labels"},
+			},
+		},
+		// --- End discussion tools ---
 		{
 			"name":        "juggler_request_secret",
 			"description": "Request provisioning of a new secret. Creates a labeled issue on tinyland-inc/remote-juggler for human review.",

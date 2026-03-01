@@ -200,7 +200,7 @@ Track which campaigns have produced real results. Updated as campaigns run.
 - All 5 infra images updated: sha-59883c6 → sha-9897de1
 - **47/47 enabled campaigns** have run at least once: oc-gateway-smoketest (#276), pc-identity-audit (#277) were the final two
 - cc-gateway-health verified post-deploy: SUCCESS, 5 tool calls in 1 second
-- All pods healthy: gateway 1/1, ironclaw 3/3, picoclaw 2/2, hexstrike 2/2, setec 1/1
+- All pods healthy: gateway 1/1, ironclaw 3/3, tinyclaw 2/2, hexstrike 2/2, setec 1/1
 **Blocked**:
 - FeedbackHandler search 422 on long fingerprints (non-blocking)
 - IronClaw heuristic tool counting still reports 0 for internal agent loop

@@ -2,7 +2,7 @@
   "id": "pc-identity-audit",
   "name": "PicoClaw Identity Audit",
   "description": "PicoClaw verifies its own identity state and bot credential configuration",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 8 * * 1",
     "event": "manual"

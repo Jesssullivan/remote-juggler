@@ -54,8 +54,8 @@ Browser/Claude Code
         +-- IronClaw pod (ironclaw + adapter + campaign-runner)
         |     adapter :8080 → ironclaw :18789 (WebSocket/HTTP chat)
         |
-        +-- PicoClaw pod (picoclaw + adapter)
-        |     adapter :8080 → picoclaw :18790 (OpenAI-compat API)
+        +-- TinyClaw pod (tinyclaw + adapter)
+        |     adapter :8080 → tinyclaw :18790 (dispatch API)
         |
         +-- HexStrike-AI pod (hexstrike-ai + adapter)
               adapter :8080 → hexstrike-ai :8888 (FastMCP)

@@ -1,0 +1,58 @@
+{
+  "id": "xa-finding-handoff",
+  "name": "Cross-Agent Finding Handoff",
+  "description": "Polls for unhandled Discussion findings with handoff labels, extracts rj-meta, and routes to the appropriate target agent for follow-up analysis.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "schedule": "*/15 * * * *",
+    "event": "manual"
+  },
+  "process": [
+    "Search Discussions for open handoffs: github_discussion_search with 'label:handoff NOT label:state:acknowledged'",
+    "For each unhandled Discussion: github_discussion_get to extract rj-meta block",
+    "Parse rj-meta to determine target agent and action requested",
+    "Label Discussion as state:acknowledged via github_discussion_label",
+    "Trigger target agent campaign via juggler_campaign_trigger if applicable",
+    "Reply to Discussion with acknowledgment comment including rj-meta response block"
+  ],
+  "tools": [
+    "github_discussion_search",
+    "github_discussion_get",
+    "github_discussion_reply",
+    "github_discussion_label",
+    "juggler_campaign_trigger",
+    "juggler_campaign_status"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/xa-finding-handoff",
+    "issueLabels": [
+      "agent:cross-agent",
+      "handoff"
+    ]
+  },
+  "guardrails": {
+    "maxDuration": "10m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "All pending handoffs acknowledged and routed",
+    "kpis": [
+      "handoffs_processed",
+      "handoffs_pending",
+      "agents_triggered"
+    ]
+  }
+}

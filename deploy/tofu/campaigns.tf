@@ -19,7 +19,7 @@ resource "kubernetes_config_map" "campaign_definitions" {
     { for f in fileset("${path.module}/../../test/campaigns/gateway-direct", "*.json") : f => file("${path.module}/../../test/campaigns/gateway-direct/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/openclaw", "*.json") : f => file("${path.module}/../../test/campaigns/openclaw/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/hexstrike", "*.json") : f => file("${path.module}/../../test/campaigns/hexstrike/${f}") },
-    { for f in fileset("${path.module}/../../test/campaigns/picoclaw", "*.json") : f => file("${path.module}/../../test/campaigns/picoclaw/${f}") },
+    { for f in fileset("${path.module}/../../test/campaigns/tinyclaw", "*.json") : f => file("${path.module}/../../test/campaigns/tinyclaw/${f}") },
     { for f in fileset("${path.module}/../../test/campaigns/cross-agent", "*.json") : f => file("${path.module}/../../test/campaigns/cross-agent/${f}") },
   )
 }

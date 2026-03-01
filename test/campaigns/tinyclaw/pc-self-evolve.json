@@ -2,7 +2,7 @@
   "id": "pc-self-evolve",
   "name": "PicoClaw Self-Evolution",
   "description": "Review own campaign results, update workspace, improve scan accuracy. Maintains PicoClaw's persistent memory and false-positive tracking.",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 3 * * *",
     "event": "manual"
@@ -36,7 +36,7 @@
     "issueLabels": [
       "campaign",
       "self-evolution",
-      "picoclaw"
+      "tinyclaw"
     ],
     "issueRepo": "tinyland-inc/remote-juggler"
   },

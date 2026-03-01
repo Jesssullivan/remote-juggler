@@ -118,7 +118,7 @@ spec:
             - --campaigns-dir=/etc/campaigns
             - --gateway-url=http://rj-gateway.fuzzy-dev.svc.cluster.local:8080
             - --ironclaw-url=http://localhost:8080
-            - --picoclaw-url=http://picoclaw-agent.fuzzy-dev.svc.cluster.local:8080
+            - --tinyclaw-url=http://tinyclaw-agent.fuzzy-dev.svc.cluster.local:8080
             - --hexstrike-ai-url=http://hexstrike-ai-agent.fuzzy-dev.svc.cluster.local:8080
             - --interval=60s
           ports:

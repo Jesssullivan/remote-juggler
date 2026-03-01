@@ -440,7 +440,7 @@ The current campaign dispatch uses ad-hoc JSON. Based on GitHub's research, form
 type CampaignDispatch = {
   type: "campaign_dispatch";
   campaign_id: string;
-  agent: "ironclaw" | "picoclaw" | "hexstrike-ai" | "gateway-direct";
+  agent: "ironclaw" | "tinyclaw" | "hexstrike-ai" | "gateway-direct";
   session_key: string;
   payload: CampaignPayload;
   timeout_ms: number;

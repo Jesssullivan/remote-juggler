@@ -30,7 +30,7 @@ Hard numbers from the system audit:
 | Campaigns never executed | ~30 | All `lastRun: null` in index.json |
 | IronClaw tool invocations | 0 | rj-tool wrapper exists but no evidence of use |
 | HexStrike tool invocations | Errors | All 42 OCaml MCP tools return errors; adapter CrashLoopBackOff noted |
-| TinyClaw (PicoClaw) tool invocations | Untracked | Closest to working; dispatch endpoint verified |
+| TinyClaw (TinyClaw) tool invocations | Untracked | Closest to working; dispatch endpoint verified |
 | Inter-agent conversations | 0 | No cross-agent protocol exists yet |
 | Self-modifications (agent-authored PRs merged) | 0 | `oc-self-evolve` and `pc-self-evolve` campaigns defined but never run |
 | Findings backed by tool data | ~4 | Handful of E2E-verified campaign results |
@@ -46,7 +46,7 @@ Hard numbers from the system audit:
 |-------|-----------|----------------|-------------------|-------------------|
 | IronClaw (OpenClaw) | 3/3 Running | Via rj-tool wrapper (untested) | Adapter localhost:8080 | None verified |
 | HexStrike-AI | 2/2 Running | 42 native (broken) + adapter proxy | K8s Service | Errors only |
-| TinyClaw (PicoClaw) | 2/2 Running | Adapter tool proxy | POST /api/dispatch | Closest to working |
+| TinyClaw (TinyClaw) | 2/2 Running | Adapter tool proxy | POST /api/dispatch | Closest to working |
 | Gateway-Direct | N/A (tools only) | 53 MCP tools | Direct execution | cc-gateway-health passes |
 
 ---
@@ -279,4 +279,4 @@ All detailed plans and tracking documents for this epic:
 |-------|-----------|
 | IronClaw | [`deploy/fork-dockerfiles/ironclaw/workspace/`](../deploy/fork-dockerfiles/ironclaw/workspace/) -- SOUL.md, TOOLS.md, IDENTITY.md, skills/ |
 | HexStrike | [`deploy/fork-dockerfiles/hexstrike-ai/workspace/`](../deploy/fork-dockerfiles/hexstrike-ai/workspace/) -- AGENT.md, TOOLS.md, SOUL.md |
-| TinyClaw | [`deploy/fork-dockerfiles/picoclaw/workspace/`](../deploy/fork-dockerfiles/picoclaw/workspace/) -- AGENT.md, TOOLS.md, SOUL.md, skills/ |
+| TinyClaw | [`deploy/fork-dockerfiles/tinyclaw/workspace/`](../deploy/fork-dockerfiles/tinyclaw/workspace/) -- AGENT.md, TOOLS.md, SOUL.md, skills/ |

@@ -20,12 +20,16 @@ on:
         required: false
         default: 'all'
 
+permissions: {}
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       ironclaw: ${{ steps.changes.outputs.ironclaw }}
-      picoclaw: ${{ steps.changes.outputs.picoclaw }}
+      tinyclaw: ${{ steps.changes.outputs.tinyclaw }}
       hexstrike-ai: ${{ steps.changes.outputs.hexstrike-ai }}
     steps:
       - uses: actions/checkout@v4
@@ -39,10 +43,10 @@ jobs:
             input="${{ github.event.inputs.agents }}"
             if [[ "$input" == "all" || -z "$input" ]]; then
               echo "ironclaw=true" >> "$GITHUB_OUTPUT"
-              echo "picoclaw=true" >> "$GITHUB_OUTPUT"
+              echo "tinyclaw=true" >> "$GITHUB_OUTPUT"
               echo "hexstrike-ai=true" >> "$GITHUB_OUTPUT"
             else
-              for agent in ironclaw picoclaw hexstrike-ai; do
+              for agent in ironclaw tinyclaw hexstrike-ai; do
                 if echo "$input" | grep -q "$agent"; then
                   echo "${agent}=true" >> "$GITHUB_OUTPUT"
                 else
@@ -52,7 +56,7 @@ jobs:
             fi
           else
             changed=$(git diff --name-only HEAD~1 HEAD)
-            for agent in ironclaw picoclaw hexstrike-ai; do
+            for agent in ironclaw tinyclaw hexstrike-ai; do
               if echo "$changed" | grep -q "deploy/fork-dockerfiles/${agent}/"; then
                 echo "${agent}=true" >> "$GITHUB_OUTPUT"
               else
@@ -65,25 +69,27 @@ jobs:
         run: |
           echo "### Workspace Sync Targets" >> "$GITHUB_STEP_SUMMARY"
           echo "- IronClaw: ${{ steps.changes.outputs.ironclaw }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- PicoClaw: ${{ steps.changes.outputs.picoclaw }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- TinyClaw: ${{ steps.changes.outputs.tinyclaw }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- HexStrike-AI: ${{ steps.changes.outputs.hexstrike-ai }}" >> "$GITHUB_STEP_SUMMARY"
 
   sync:
     needs: detect-changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
           - agent: ironclaw
             enabled: ${{ needs.detect-changes.outputs.ironclaw }}
-          - agent: picoclaw
-            enabled: ${{ needs.detect-changes.outputs.picoclaw }}
+          - agent: tinyclaw
+            enabled: ${{ needs.detect-changes.outputs.tinyclaw }}
           - agent: hexstrike-ai
             enabled: ${{ needs.detect-changes.outputs.hexstrike-ai }}
     if: |
       needs.detect-changes.outputs.ironclaw == 'true' ||
-      needs.detect-changes.outputs.picoclaw == 'true' ||
+      needs.detect-changes.outputs.tinyclaw == 'true' ||
       needs.detect-changes.outputs.hexstrike-ai == 'true'
     steps:
       - name: Skip if not changed

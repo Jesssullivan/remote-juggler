@@ -4,7 +4,7 @@
 #
 # Individual agent deployments are in their own files:
 #   - ironclaw.tf  (IronClaw — OpenClaw-based agent)
-#   - picoclaw.tf  (PicoClaw — lightweight agent for scan campaigns)
+#   - tinyclaw.tf  (TinyClaw — lightweight agent for scan campaigns)
 #   - hexstrike.tf (HexStrike-AI — security testing agent)
 #
 # This file contains shared resources used by all agents.
@@ -23,7 +23,7 @@ resource "kubernetes_secret" "agent_ssh_keys" {
   data = {
     # Bash $() strips trailing newlines; SSH keys require one.
     "ironclaw-id-ed25519"  = "${var.ironclaw_ssh_private_key}\n"
-    "picoclaw-id-ed25519"  = "${var.picoclaw_ssh_private_key}\n"
+    "tinyclaw-id-ed25519"  = "${var.tinyclaw_ssh_private_key}\n"
     "hexstrike-id-ed25519" = "${var.hexstrike_ssh_private_key}\n"
   }
 

@@ -1,0 +1,59 @@
+{
+  "id": "oc-handoff-response",
+  "name": "IronClaw Handoff Response",
+  "description": "Responds to code quality and dependency findings routed from other agents via Discussion handoffs. Performs code analysis and posts results back.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "dependent",
+    "dependsOn": [
+      "xa-finding-handoff"
+    ]
+  },
+  "process": [
+    "Receive finding context from triggering handoff",
+    "Fetch the target file or component referenced in the finding",
+    "Analyze code quality issues or dependency problems",
+    "Propose remediation if the finding is fixable",
+    "Reply to the originating Discussion with analysis and rj-meta response block",
+    "Update Discussion labels with resolution status"
+  ],
+  "tools": [
+    "github_fetch",
+    "github_list_alerts",
+    "github_discussion_get",
+    "github_discussion_reply",
+    "github_discussion_label"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/oc-handoff-response",
+    "issueLabels": [
+      "agent:ironclaw",
+      "handoff-response"
+    ]
+  },
+  "guardrails": {
+    "maxDuration": "15m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": true,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Handoff findings analyzed and responded to",
+    "kpis": [
+      "findings_analyzed",
+      "remediations_proposed",
+      "false_positives"
+    ]
+  }
+}

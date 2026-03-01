@@ -96,8 +96,8 @@ func NewAdapter(agentType, agentURL, gatewayURL, authToken, skillsDir string) (*
 			b.SetAuthToken(authToken)
 		}
 		backend = b
-	case "picoclaw":
-		b := NewPicoclawBackend(agentURL, gatewayURL)
+	case "tinyclaw":
+		b := NewTinyclawBackend(agentURL, gatewayURL)
 		if skillsDir != "" {
 			b.SetSkillsDir(skillsDir)
 		}

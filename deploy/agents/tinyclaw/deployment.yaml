@@ -1,35 +1,35 @@
 ---
-# PicoClaw Agent + Adapter Sidecar Deployment
+# TinyClaw Agent + Adapter Sidecar Deployment
 # This is a REFERENCE file — the authoritative deployment is managed by
-# deploy/tofu/picoclaw.tf via OpenTofu.
+# deploy/tofu/tinyclaw.tf via OpenTofu.
 #
-# PicoClaw is a PicoClaw-based agent at tinyland-inc/picoclaw (standalone repo).
+# TinyClaw is based on tinyland-inc/picoclaw (standalone repo).
 # It handles lightweight scan campaigns (dead code, TypeScript strictness, a11y).
-# The adapter sidecar bridges campaign protocol to PicoClaw's OpenAI-compatible API
-# and proxies rj-gateway MCP tools as native PicoClaw functions (PicoClaw lacks
+# The adapter sidecar bridges campaign protocol to TinyClaw's dispatch API
+# and proxies rj-gateway MCP tools as native TinyClaw functions (TinyClaw lacks
 # native MCP support — see upstream issue #290).
 #
 # Architecture:
-#   campaign-runner -> adapter (POST /campaign) -> picoclaw (POST /v1/chat/completions)
+#   campaign-runner -> adapter (POST /campaign) -> tinyclaw (POST /api/dispatch)
 #   adapter also fetches rj-gateway tools/list and injects as OpenAI functions
 #
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: picoclaw-agent
+  name: tinyclaw-agent
   namespace: fuzzy-dev
   labels:
-    app: picoclaw-agent
+    app: tinyclaw-agent
     tier: agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: picoclaw-agent
+      app: tinyclaw-agent
   template:
     metadata:
       labels:
-        app: picoclaw-agent
+        app: tinyclaw-agent
         tier: agent
     spec:
       imagePullSecrets:
@@ -37,8 +37,8 @@ spec:
       securityContext:
         fsGroup: 10000
       containers:
-        - name: picoclaw
-          image: ghcr.io/tinyland-inc/picoclaw:latest  # renovate: image
+        - name: tinyclaw
+          image: ghcr.io/tinyland-inc/tinyclaw:latest  # renovate: image
           ports:
             - containerPort: 18790
               name: agent
@@ -50,7 +50,7 @@ spec:
                   key: ANTHROPIC_API_KEY
             - name: ANTHROPIC_BASE_URL
               value: "http://aperture.fuzzy-dev.svc.cluster.local"
-            - name: PICOCLAW_MODEL
+            - name: TINYCLAW_MODEL
               value: "claude-haiku-4-5-20251001"
             - name: GIT_AUTHOR_NAME
               value: "rj-agent-bot[bot]"
@@ -59,7 +59,7 @@ spec:
           volumeMounts:
             - name: ssh-key
               mountPath: /home/agent/.ssh/id_ed25519
-              subPath: picoclaw-id-ed25519
+              subPath: tinyclaw-id-ed25519
               readOnly: true
           resources:
             requests:
@@ -73,7 +73,7 @@ spec:
         - name: adapter
           image: ghcr.io/tinyland-inc/remote-juggler/adapter:latest  # renovate: image
           args:
-            - --agent-type=picoclaw
+            - --agent-type=tinyclaw
             - --agent-url=http://localhost:18790
             - --listen-port=8080
             - --gateway-url=http://rj-gateway.fuzzy-dev.svc.cluster.local:8080
@@ -98,14 +98,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: picoclaw-agent
+  name: tinyclaw-agent
   namespace: fuzzy-dev
   labels:
-    app: picoclaw-agent
+    app: tinyclaw-agent
 spec:
   type: ClusterIP
   selector:
-    app: picoclaw-agent
+    app: tinyclaw-agent
   ports:
     - port: 8080
       targetPort: adapter

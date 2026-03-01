@@ -38,9 +38,7 @@ env:
   REGISTRY: ghcr.io
   OWNER: tinyland-inc
 
-permissions:
-  contents: read
-  packages: write
+permissions: {}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -49,6 +47,7 @@ jobs:
   prepare:
     name: Prepare build matrix
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -77,6 +76,9 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     needs: prepare
     strategy:
       fail-fast: false
@@ -130,6 +132,7 @@ jobs:
   summary:
     name: Container build summary
     runs-on: ubuntu-latest
+    permissions: {}
     needs: build
     if: always()
     steps:

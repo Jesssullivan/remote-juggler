@@ -30,7 +30,7 @@
     "agent": {
       "enum": [
         "ironclaw",
-        "picoclaw",
+        "tinyclaw",
         "hexstrike-ai",
         "gateway-direct"
       ],
@@ -154,7 +154,11 @@
         },
         "prBranchPrefix": {
           "type": "string",
-          "description": "Branch prefix for auto-created PRs (e.g. 'sid/campaign-docs-')"
+          "description": "Branch prefix for auto-created PRs (e.g. 'sid/dep-update-')"
+        },
+        "prBodyTemplate": {
+          "type": "string",
+          "description": "Template for PR body. Supports {{title}}, {{severity}}, {{campaign}}, {{fingerprint}} placeholders."
         }
       },
       "additionalProperties": false

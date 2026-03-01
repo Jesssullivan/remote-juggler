@@ -21,6 +21,7 @@ type Scheduler struct {
 	collector     *Collector
 	feedback      *FeedbackHandler
 	publisher     *Publisher
+	router        *FindingRouter
 	tokenProvider *AppTokenProvider
 
 	// completedRuns tracks successfully completed campaign IDs within the
@@ -245,6 +246,10 @@ func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result 
 		if err := s.feedback.ProcessFindings(ctx, campaign, result.Findings, previousFindings); err != nil {
 			log.Printf("campaign %s: feedback error: %v", campaign.ID, err)
 		}
+		// Create PRs for fixable findings (guarded by CreatePRs && !ReadOnly internally).
+		if err := s.feedback.ProcessPRFindings(ctx, campaign, result.Findings); err != nil {
+			log.Printf("campaign %s: PR feedback error: %v", campaign.ID, err)
+		}
 	}
 	if s.publisher != nil && campaign.Feedback.ShouldPublish(result.Status) {
 		url, err := s.publisher.Publish(ctx, campaign, result)
@@ -258,6 +263,13 @@ func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result 
 					log.Printf("campaign %s: failed to update result with discussion URL: %v", campaign.ID, err)
 				}
 			}
+		}
+	}
+	// Route findings to other agents via Discussion labels.
+	if s.router != nil && len(result.Findings) > 0 {
+		routed := s.router.Route(campaign, result.Findings)
+		if len(routed) > 0 {
+			log.Printf("campaign %s: routed %d findings to other agents", campaign.ID, len(routed))
 		}
 	}
 	if s.OnResult != nil {

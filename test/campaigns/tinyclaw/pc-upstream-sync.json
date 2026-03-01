@@ -2,7 +2,7 @@
   "id": "pc-upstream-sync",
   "name": "PicoClaw Reference Sync",
   "description": "Monitor sipeed/picoclaw for useful changes and selectively adopt them into tinyland-inc/picoclaw via annotated PRs.",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 7 * * 1",
     "event": "manual"
@@ -46,7 +46,7 @@
     "issueLabels": [
       "campaign",
       "reference-sync",
-      "picoclaw"
+      "tinyclaw"
     ],
     "issueRepo": "tinyland-inc/picoclaw"
   },

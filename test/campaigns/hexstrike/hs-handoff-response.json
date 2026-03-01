@@ -1,0 +1,60 @@
+{
+  "id": "hs-handoff-response",
+  "name": "HexStrike Handoff Response",
+  "description": "Responds to security findings routed from other agents via Discussion handoffs. Performs deep security analysis on the handed-off finding and posts results back.",
+  "agent": "hexstrike-ai",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "dependent",
+    "dependsOn": [
+      "xa-finding-handoff"
+    ]
+  },
+  "process": [
+    "Receive finding context from triggering handoff",
+    "Fetch the target file or component referenced in the finding",
+    "Run security analysis using available tools (github_fetch, github_list_alerts)",
+    "Assess severity and determine if the finding is actionable",
+    "Reply to the originating Discussion with analysis results and rj-meta response block",
+    "Update Discussion labels with severity assessment"
+  ],
+  "tools": [
+    "github_fetch",
+    "github_list_alerts",
+    "github_get_alert",
+    "github_discussion_get",
+    "github_discussion_reply",
+    "github_discussion_label"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/hs-handoff-response",
+    "issueLabels": [
+      "agent:hexstrike-ai",
+      "handoff-response"
+    ]
+  },
+  "guardrails": {
+    "maxDuration": "15m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": true,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Handoff findings analyzed and responded to",
+    "kpis": [
+      "findings_analyzed",
+      "severity_confirmed",
+      "false_positives"
+    ]
+  }
+}

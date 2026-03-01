@@ -13,18 +13,18 @@ import (
 	"time"
 )
 
-// PicoclawBackend translates campaign requests to TinyClaw's HTTP dispatch API.
-// TinyClaw (formerly PicoClaw) exposes POST /api/dispatch for agent task execution,
+// TinyclawBackend translates campaign requests to TinyClaw's HTTP dispatch API.
+// TinyClaw exposes POST /api/dispatch for agent task execution,
 // GET /api/tools for tool listing, and GET /api/status for health/status info.
-type PicoclawBackend struct {
+type TinyclawBackend struct {
 	agentURL   string
 	gatewayURL string
 	skillsDir  string // Path to workspace/skills/ directory (optional)
 	httpClient *http.Client
 }
 
-func NewPicoclawBackend(agentURL, gatewayURL string) *PicoclawBackend {
-	return &PicoclawBackend{
+func NewTinyclawBackend(agentURL, gatewayURL string) *TinyclawBackend {
+	return &TinyclawBackend{
 		agentURL:   agentURL,
 		gatewayURL: gatewayURL,
 		httpClient: &http.Client{
@@ -35,13 +35,13 @@ func NewPicoclawBackend(agentURL, gatewayURL string) *PicoclawBackend {
 
 // SetSkillsDir sets the path to the workspace skills directory.
 // SKILL.md files under this directory are loaded and injected into campaign prompts.
-func (b *PicoclawBackend) SetSkillsDir(dir string) {
+func (b *TinyclawBackend) SetSkillsDir(dir string) {
 	b.skillsDir = dir
 }
 
 // loadSkills reads all SKILL.md files from the skills directory and returns
 // their content concatenated as context for the LLM prompt.
-func (b *PicoclawBackend) loadSkills() string {
+func (b *TinyclawBackend) loadSkills() string {
 	if b.skillsDir == "" {
 		return ""
 	}
@@ -76,9 +76,9 @@ func (b *PicoclawBackend) loadSkills() string {
 	return "\n\n## Skills Reference\n\n" + strings.Join(parts, "\n\n---\n\n")
 }
 
-func (b *PicoclawBackend) Type() string { return "picoclaw" }
+func (b *TinyclawBackend) Type() string { return "tinyclaw" }
 
-func (b *PicoclawBackend) Health() error {
+func (b *TinyclawBackend) Health() error {
 	resp, err := b.httpClient.Get(b.agentURL + "/api/status")
 	if err == nil {
 		defer resp.Body.Close()
@@ -101,7 +101,7 @@ func (b *PicoclawBackend) Health() error {
 // Dispatch sends a campaign to TinyClaw via POST /api/dispatch.
 // TinyClaw accepts tasks with {content, session_key, channel} and returns
 // {content, finish_reason, error}.
-func (b *PicoclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
+func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
 	var c struct {
 		ID          string   `json:"id"`
 		Name        string   `json:"name"`

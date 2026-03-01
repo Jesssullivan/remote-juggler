@@ -16,7 +16,7 @@ func TestNewAdapter_UnknownType(t *testing.T) {
 }
 
 func TestNewAdapter_ValidTypes(t *testing.T) {
-	types := []string{"ironclaw", "openclaw", "picoclaw", "hexstrike-ai", "hexstrike"}
+	types := []string{"ironclaw", "openclaw", "tinyclaw", "hexstrike-ai", "hexstrike"}
 	for _, typ := range types {
 		a, err := NewAdapter(typ, "http://localhost:1234", "http://gw:8080", "", "")
 		if err != nil {

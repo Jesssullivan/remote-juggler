@@ -12,7 +12,7 @@
   },
   "process": [
     "Query aggregate Aperture usage: juggler_aperture_usage()",
-    "Query per-agent usage: ironclaw, picoclaw, hexstrike-ai",
+    "Query per-agent usage: ironclaw, tinyclaw, hexstrike-ai",
     "Calculate org-wide token totals (input/output)",
     "Compute per-campaign breakdown and cost estimates",
     "Compare against previous week (retrieve from Setec)",

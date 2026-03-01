@@ -1,23 +1,23 @@
 # =============================================================================
-# PicoClaw Agent + Adapter Sidecar
+# TinyClaw Agent + Adapter Sidecar
 # =============================================================================
 #
 # 2-container pod:
-#   1. picoclaw — PicoClaw-based agent (ghcr.io/tinyland-inc/picoclaw)
-#   2. adapter  — campaign protocol bridge with tool proxy (PicoClaw lacks MCP)
+#   1. tinyclaw — TinyClaw-based agent (ghcr.io/tinyland-inc/tinyclaw)
+#   2. adapter  — campaign protocol bridge with tool proxy (TinyClaw lacks MCP)
 #
-# The adapter registers rj-gateway's 43 MCP tools in PicoClaw's native
+# The adapter registers rj-gateway's 43 MCP tools in TinyClaw's native
 # ToolRegistry format via the tools_proxy, bridging MCP tools into
-# PicoClaw's native format.
+# TinyClaw's native format.
 # =============================================================================
 
-resource "kubernetes_deployment" "picoclaw" {
+resource "kubernetes_deployment" "tinyclaw" {
   wait_for_rollout = false
 
   metadata {
-    name      = "picoclaw-agent"
+    name      = "tinyclaw-agent"
     namespace = kubernetes_namespace.main.metadata[0].name
-    labels    = merge(local.labels, { app = "picoclaw-agent", tier = "agent" })
+    labels    = merge(local.labels, { app = "tinyclaw-agent", tier = "agent" })
   }
 
   spec {
@@ -31,14 +31,14 @@ resource "kubernetes_deployment" "picoclaw" {
 
     selector {
       match_labels = {
-        app = "picoclaw-agent"
+        app = "tinyclaw-agent"
       }
     }
 
     template {
       metadata {
         labels = merge(local.labels, {
-          app  = "picoclaw-agent"
+          app  = "tinyclaw-agent"
           tier = "agent"
         })
       }
@@ -57,7 +57,7 @@ resource "kubernetes_deployment" "picoclaw" {
         # so we must copy the config into the PVC if it doesn't exist yet.
         init_container {
           name  = "workspace-init"
-          image = var.picoclaw_image
+          image = var.tinyclaw_image
           command = ["/bin/sh", "-c", <<-EOT
             # Always sync workspace: add new files without overwriting existing.
             cp -rn /workspace-defaults/* /workspace/ 2>/dev/null || true
@@ -87,10 +87,10 @@ resource "kubernetes_deployment" "picoclaw" {
           }
         }
 
-        # PicoClaw agent container
+        # TinyClaw agent container
         container {
-          name  = "picoclaw"
-          image = var.picoclaw_image
+          name  = "tinyclaw"
+          image = var.tinyclaw_image
 
           env {
             name = "ANTHROPIC_API_KEY"
@@ -114,7 +114,7 @@ resource "kubernetes_deployment" "picoclaw" {
           }
           env {
             name  = "GIT_AUTHOR_EMAIL"
-            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "picoclaw@fuzzy-dev.tinyland.dev"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "tinyclaw@fuzzy-dev.tinyland.dev"
           }
           env {
             name  = "GIT_COMMITTER_NAME"
@@ -122,7 +122,7 @@ resource "kubernetes_deployment" "picoclaw" {
           }
           env {
             name  = "GIT_COMMITTER_EMAIL"
-            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "picoclaw@fuzzy-dev.tinyland.dev"
+            value = var.github_app_id != "" ? "${var.github_app_id}+rj-agent-bot[bot]@users.noreply.github.com" : "tinyclaw@fuzzy-dev.tinyland.dev"
           }
           env {
             name  = "GIT_SSH_COMMAND"
@@ -147,7 +147,7 @@ resource "kubernetes_deployment" "picoclaw" {
           volume_mount {
             name       = "ssh-keys"
             mount_path = "/home/agent/.ssh/id_ed25519"
-            sub_path   = "picoclaw-id-ed25519"
+            sub_path   = "tinyclaw-id-ed25519"
             read_only  = true
           }
 
@@ -163,13 +163,13 @@ resource "kubernetes_deployment" "picoclaw" {
           }
         }
 
-        # Adapter sidecar — bridges campaign protocol to PicoClaw's native API
+        # Adapter sidecar — bridges campaign protocol to TinyClaw's native API
         container {
           name  = "adapter"
           image = var.adapter_image
 
           args = [
-            "--agent-type=picoclaw",
+            "--agent-type=tinyclaw",
             "--agent-url=http://127.0.0.1:18790",
             "--listen-port=8080",
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
@@ -201,14 +201,14 @@ resource "kubernetes_deployment" "picoclaw" {
         volume {
           name = "workspace"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.picoclaw_workspace.metadata[0].name
+            claim_name = kubernetes_persistent_volume_claim.tinyclaw_workspace.metadata[0].name
           }
         }
 
         volume {
           name = "state"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.picoclaw_state.metadata[0].name
+            claim_name = kubernetes_persistent_volume_claim.tinyclaw_state.metadata[0].name
           }
         }
 
@@ -227,15 +227,15 @@ resource "kubernetes_deployment" "picoclaw" {
   depends_on = [helm_release.tailscale_operator]
 }
 
-# --- PVCs for PicoClaw persistent workspace and state ---
+# --- PVCs for TinyClaw persistent workspace and state ---
 
-resource "kubernetes_persistent_volume_claim" "picoclaw_workspace" {
+resource "kubernetes_persistent_volume_claim" "tinyclaw_workspace" {
   wait_until_bound = false
 
   metadata {
-    name      = "picoclaw-workspace"
+    name      = "tinyclaw-workspace"
     namespace = kubernetes_namespace.main.metadata[0].name
-    labels    = merge(local.labels, { app = "picoclaw-agent" })
+    labels    = merge(local.labels, { app = "tinyclaw-agent" })
   }
 
   spec {
@@ -248,13 +248,13 @@ resource "kubernetes_persistent_volume_claim" "picoclaw_workspace" {
   }
 }
 
-resource "kubernetes_persistent_volume_claim" "picoclaw_state" {
+resource "kubernetes_persistent_volume_claim" "tinyclaw_state" {
   wait_until_bound = false
 
   metadata {
-    name      = "picoclaw-state"
+    name      = "tinyclaw-state"
     namespace = kubernetes_namespace.main.metadata[0].name
-    labels    = merge(local.labels, { app = "picoclaw-agent" })
+    labels    = merge(local.labels, { app = "tinyclaw-agent" })
   }
 
   spec {
@@ -267,17 +267,17 @@ resource "kubernetes_persistent_volume_claim" "picoclaw_state" {
   }
 }
 
-# ClusterIP Service for PicoClaw adapter (campaign runner dispatches here)
-resource "kubernetes_service" "picoclaw" {
+# ClusterIP Service for TinyClaw adapter (campaign runner dispatches here)
+resource "kubernetes_service" "tinyclaw" {
   metadata {
-    name      = "picoclaw-agent"
+    name      = "tinyclaw-agent"
     namespace = kubernetes_namespace.main.metadata[0].name
-    labels    = merge(local.labels, { app = "picoclaw-agent" })
+    labels    = merge(local.labels, { app = "tinyclaw-agent" })
   }
 
   spec {
     selector = {
-      app = "picoclaw-agent"
+      app = "tinyclaw-agent"
     }
 
     port {

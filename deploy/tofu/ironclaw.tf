@@ -309,7 +309,7 @@ resource "kubernetes_deployment" "ironclaw" {
               "--campaigns-dir=/etc/campaigns",
               "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
               "--ironclaw-url=http://localhost:8080",
-              "--picoclaw-url=http://picoclaw-agent.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
+              "--tinyclaw-url=http://tinyclaw-agent.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
               "--hexstrike-ai-url=http://hexstrike-ai-agent.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
               "--interval=60s",
               "--api-port=8081",

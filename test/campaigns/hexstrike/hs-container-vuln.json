@@ -41,18 +41,19 @@
       "security",
       "container-vuln"
     ],
-    "issueRepo": "tinyland-inc/remote-juggler"
+    "issueRepo": "tinyland-inc/remote-juggler",
+    "prBranchPrefix": "sid/container-fix-"
   },
   "guardrails": {
     "maxDuration": "20m",
-    "readOnly": true,
+    "readOnly": false,
     "aiApiBudget": {
       "maxTokens": 60000
     }
   },
   "feedback": {
     "createIssues": true,
-    "createPRs": false,
+    "createPRs": true,
     "closeResolvedIssues": true
   },
   "metrics": {

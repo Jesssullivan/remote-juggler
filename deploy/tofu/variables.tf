@@ -76,8 +76,8 @@ variable "ironclaw_ssh_private_key" {
   default     = ""
 }
 
-variable "picoclaw_ssh_private_key" {
-  description = "PicoClaw agent SSH private key (ed25519)"
+variable "tinyclaw_ssh_private_key" {
+  description = "TinyClaw agent SSH private key (ed25519)"
   type        = string
   sensitive   = true
   default     = ""
@@ -100,8 +100,8 @@ variable "ironclaw_model" {
   default     = "claude-sonnet-4-20250514"
 }
 
-variable "picoclaw_model" {
-  description = "Claude model for PicoClaw lightweight campaigns"
+variable "tinyclaw_model" {
+  description = "Claude model for TinyClaw lightweight campaigns"
   type        = string
   default     = "claude-haiku-4-5-20251001"
 }
@@ -166,10 +166,10 @@ variable "ironclaw_image" {
   default     = "ghcr.io/tinyland-inc/ironclaw:latest" # renovate: image
 }
 
-variable "picoclaw_image" {
-  description = "PicoClaw agent container image"
+variable "tinyclaw_image" {
+  description = "TinyClaw agent container image"
   type        = string
-  default     = "ghcr.io/tinyland-inc/picoclaw:latest" # renovate: image
+  default     = "ghcr.io/tinyland-inc/tinyclaw:latest" # renovate: image
 }
 
 variable "hexstrike_ai_image" {

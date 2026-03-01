@@ -84,7 +84,7 @@ export TF_VAR_brave_api_key=$(resolve "brave-api-key" 2>/dev/null || echo "")
 
 # Agent SSH identity keys (optional — empty string if not yet provisioned)
 export TF_VAR_ironclaw_ssh_private_key=$(resolve "agents/ironclaw/ssh-private-key" 2>/dev/null || resolve "agents/openclaw/ssh-private-key" 2>/dev/null || echo "")
-export TF_VAR_picoclaw_ssh_private_key=$(resolve "agents/picoclaw/ssh-private-key" 2>/dev/null || echo "")
+export TF_VAR_tinyclaw_ssh_private_key=$(resolve "agents/tinyclaw/ssh-private-key" 2>/dev/null || resolve "agents/picoclaw/ssh-private-key" 2>/dev/null || echo "")
 export TF_VAR_hexstrike_ssh_private_key=$(resolve "agents/hexstrike/ssh-private-key" 2>/dev/null || echo "")
 echo "Secrets resolved. Running: tofu $*"
 

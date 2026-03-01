@@ -41,9 +41,11 @@ type Target struct {
 
 // CampaignOutputs describes where campaign results are stored.
 type CampaignOutputs struct {
-	SetecKey    string   `json:"setecKey"`
-	IssueLabels []string `json:"issueLabels,omitempty"`
-	IssueRepo   string   `json:"issueRepo,omitempty"`
+	SetecKey       string   `json:"setecKey"`
+	IssueLabels    []string `json:"issueLabels,omitempty"`
+	IssueRepo      string   `json:"issueRepo,omitempty"`
+	PRBranchPrefix string   `json:"prBranchPrefix,omitempty"`
+	PRBodyTemplate string   `json:"prBodyTemplate,omitempty"`
 }
 
 // Guardrails define safety constraints for campaign execution.

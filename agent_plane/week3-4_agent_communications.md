@@ -523,13 +523,13 @@ Use `gh` CLI to create the labels needed for agent routing:
 ```bash
 # Agent identity labels
 GITHUB_TOKEN= gh label create "agent:ironclaw" --repo tinyland-inc/remote-juggler --color "0E8A16" --description "Finding originated from IronClaw agent"
-GITHUB_TOKEN= gh label create "agent:picoclaw" --repo tinyland-inc/remote-juggler --color "1D76DB" --description "Finding originated from PicoClaw agent"
+GITHUB_TOKEN= gh label create "agent:tinyclaw" --repo tinyland-inc/remote-juggler --color "1D76DB" --description "Finding originated from TinyClaw agent"
 GITHUB_TOKEN= gh label create "agent:hexstrike-ai" --repo tinyland-inc/remote-juggler --color "B60205" --description "Finding originated from HexStrike-AI agent"
 GITHUB_TOKEN= gh label create "agent:gateway-direct" --repo tinyland-inc/remote-juggler --color "5319E7" --description "Finding originated from gateway-direct agent"
 
 # Handoff labels (request another agent to act)
 GITHUB_TOKEN= gh label create "handoff:ironclaw" --repo tinyland-inc/remote-juggler --color "C2E0C6" --description "Requesting IronClaw to review and act"
-GITHUB_TOKEN= gh label create "handoff:picoclaw" --repo tinyland-inc/remote-juggler --color "BFD4F2" --description "Requesting PicoClaw to review and act"
+GITHUB_TOKEN= gh label create "handoff:tinyclaw" --repo tinyland-inc/remote-juggler --color "BFD4F2" --description "Requesting TinyClaw to review and act"
 GITHUB_TOKEN= gh label create "handoff:hexstrike-ai" --repo tinyland-inc/remote-juggler --color "FCCECE" --description "Requesting HexStrike-AI to review and act"
 
 # Severity labels (for routing priority)
@@ -638,12 +638,12 @@ var defaultRoutingRules = []RoutingRule{
         Labels:        []string{"handoff:ironclaw"},
         Priority:      4,
     },
-    // Upstream drift -> PicoClaw (lightweight, fast scanner)
+    // Upstream drift -> TinyClaw (lightweight, fast scanner)
     {
         CampaignPrefix: "xa-upstream",
-        TargetAgent:    "picoclaw",
+        TargetAgent:    "tinyclaw",
         Category:       "Agent Reports",
-        Labels:         []string{"handoff:picoclaw"},
+        Labels:         []string{"handoff:tinyclaw"},
         Priority:       5,
     },
 }
@@ -715,7 +715,7 @@ The Router calls the gateway's Discussion tools internally via HTTP (same patter
 #### Router tests: `test/campaigns/runner/router_test.go`
 
 - `TestRouterMatchesSeverity` -- high severity security finding matches HexStrike rule
-- `TestRouterMatchesCampaignPrefix` -- `xa-upstream-*` routes to PicoClaw
+- `TestRouterMatchesCampaignPrefix` -- `xa-upstream-*` routes to TinyClaw
 - `TestRouterMatchesLabel` -- finding with `credential-exposure` label routes to HexStrike
 - `TestRouterFirstRuleWins` -- higher priority rule takes precedence
 - `TestRouterNoMatch` -- findings without matching rules are not routed
@@ -753,7 +753,7 @@ cd test/campaigns/runner && go test -v -run Router ./...
     "Label the Discussion 'state:acknowledged' to prevent re-processing",
     "Search Discussions with label 'handoff:ironclaw' AND NOT label 'state:acknowledged'",
     "Repeat: read, extract, trigger, acknowledge",
-    "Search Discussions with label 'handoff:picoclaw' AND NOT label 'state:acknowledged'",
+    "Search Discussions with label 'handoff:tinyclaw' AND NOT label 'state:acknowledged'",
     "Repeat: read, extract, trigger, acknowledge"
   ],
   "tools": [
@@ -1084,7 +1084,7 @@ When you receive a handoff (Discussion labeled `handoff:ironclaw`):
 ## Handoff Rules
 
 - Security findings (credentials, vulnerabilities) -> handoff to HexStrike-AI
-- Upstream drift detected -> handoff to PicoClaw
+- Upstream drift detected -> handoff to TinyClaw
 - Code quality / dependency issues -> handle yourself
 - Infrastructure issues -> escalate (message_type: "escalate")
 ```
@@ -1109,13 +1109,13 @@ Add Discussion tools section (same table as IronClaw). HexStrike uses direct MCP
 
 Add "Communication Protocol" section (same as IronClaw but with HexStrike-specific handoff rules).
 
-#### PicoClaw workspace updates
+#### TinyClaw workspace updates
 
-**File**: `deploy/fork-dockerfiles/picoclaw/workspace/TOOLS.md`
+**File**: `deploy/fork-dockerfiles/tinyclaw/workspace/TOOLS.md`
 
-Add Discussion tools (same format as PicoClaw's existing tool list).
+Add Discussion tools (same format as TinyClaw's existing tool list).
 
-**File**: `deploy/fork-dockerfiles/picoclaw/workspace/AGENT.md`
+**File**: `deploy/fork-dockerfiles/tinyclaw/workspace/AGENT.md`
 
 Add "Communication Protocol" section.
 
@@ -1128,7 +1128,7 @@ Add "Communication Protocol" section.
 # After pushing workspace updates and redeploying:
 kubectl exec -n fuzzy-dev deploy/ironclaw -- cat /workspace/TOOLS.md | grep discussion
 kubectl exec -n fuzzy-dev deploy/hexstrike-ai-agent -- cat /workspace/TOOLS.md | grep discussion
-kubectl exec -n fuzzy-dev deploy/picoclaw-agent -- cat /workspace/TOOLS.md | grep discussion
+kubectl exec -n fuzzy-dev deploy/tinyclaw-agent -- cat /workspace/TOOLS.md | grep discussion
 ```
 
 ---
@@ -1396,7 +1396,7 @@ Create `agent_plane/conversations/001-first-handoff.md` with:
 | HexStrike adapter prefix filter blocks Discussion tools | Low | HexStrike cannot use tools | The adapter uses `github_*` prefix. `github_discussion_*` matches. No change needed. Verify by checking adapter tool trace in logs. |
 | Discussion search returns stale results | Medium | Handoff campaign misses new Discussions | GitHub search indexing can lag up to 60 seconds. The 15-minute poll interval provides ample buffer. |
 | rj-meta parsing fails on malformed comments | Medium | Breaks handoff chain | `ParseRJMeta()` returns error, Router logs and continues. Handoff is not acknowledged, so it will be retried on next cycle. Add `TestParseRJMeta_Garbage` test case. |
-| PVC state shadowing breaks workspace TOOLS.md updates | High | Agents use stale TOOLS.md | PVC mounts over `/home/node/.openclaw/` (IronClaw) and `/home/picoclaw/.picoclaw/` (PicoClaw). Workspace files are at `/workspace/` which is NOT PVC-mounted, so this risk does not apply. TOOLS.md and AGENT.md go in `/workspace/` baked into the image. Verify: `kubectl exec deploy/ironclaw -- ls /workspace/TOOLS.md` |
+| PVC state shadowing breaks workspace TOOLS.md updates | High | Agents use stale TOOLS.md | PVC mounts over `/home/node/.openclaw/` (IronClaw) and `/home/picoclaw/.picoclaw/` (TinyClaw). Workspace files are at `/workspace/` which is NOT PVC-mounted, so this risk does not apply. TOOLS.md and AGENT.md go in `/workspace/` baked into the image. Verify: `kubectl exec deploy/ironclaw -- ls /workspace/TOOLS.md` |
 | Campaign ConfigMap too large (>1MB) | Low | New campaigns not loaded | Current ConfigMap has ~48 campaigns. Adding 3 more is well within limits. Monitor with `kubectl get configmap campaign-definitions -n fuzzy-dev -o json \| wc -c` |
 | Agent replies create infinite conversation loops | Medium | Token budget explosion | The `state:acknowledged` label prevents re-processing. Max 1 handoff + 1 response per finding. The Router only labels on initial publish, not on response comments. The `xa-finding-handoff` campaign only searches for `NOT label:state:acknowledged`. |
 | Gateway binary size increase | Low | Longer deploy times | Adding 5 tools (~300 lines of Go) adds <50KB to binary. Negligible. |
@@ -1432,8 +1432,8 @@ Create `agent_plane/conversations/001-first-handoff.md` with:
 | `deploy/fork-dockerfiles/ironclaw/workspace/TOOLS.md` | Add Discussion tools section |
 | `deploy/fork-dockerfiles/hexstrike-ai/workspace/TOOLS.md` | Add Discussion tools section |
 | `deploy/fork-dockerfiles/hexstrike-ai/workspace/AGENT.md` | Add Communication Protocol section |
-| `deploy/fork-dockerfiles/picoclaw/workspace/TOOLS.md` | Add Discussion tools section |
-| `deploy/fork-dockerfiles/picoclaw/workspace/AGENT.md` | Add Communication Protocol section |
+| `deploy/fork-dockerfiles/tinyclaw/workspace/TOOLS.md` | Add Discussion tools section |
+| `deploy/fork-dockerfiles/tinyclaw/workspace/AGENT.md` | Add Communication Protocol section |
 
 ### Total estimated new code
 

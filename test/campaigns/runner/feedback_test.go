@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -17,10 +19,18 @@ type mockGitHub struct {
 	comments      []map[string]any
 	searchResults []GitHubIssue
 	issueCounter  int
+	// PR-related tracking.
+	createdRefs  []map[string]string
+	patchedFiles []map[string]string
+	createdPRs   []map[string]string
+	openPRs      []map[string]string // Simulates existing open PRs.
+	fileContents map[string]string   // path → content for GET /contents.
 }
 
 func newMockGitHub() *mockGitHub {
-	return &mockGitHub{}
+	return &mockGitHub{
+		fileContents: make(map[string]string),
+	}
 }
 
 func (m *mockGitHub) Handler() http.Handler {
@@ -44,11 +54,93 @@ func (m *mockGitHub) handleRepos(w http.ResponseWriter, r *http.Request) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	path := r.URL.Path
+
+	// GET /repos/{owner}/{repo}/git/refs/heads/{branch}
+	if r.Method == http.MethodGet && strings.Contains(path, "/git/refs/heads/") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"ref": path,
+			"object": map[string]string{
+				"sha": "abc123def456",
+			},
+		})
+		return
+	}
+
+	// POST /repos/{owner}/{repo}/git/refs — create branch
+	if r.Method == http.MethodPost && strings.HasSuffix(path, "/git/refs") {
+		var payload map[string]string
+		json.NewDecoder(r.Body).Decode(&payload)
+		m.createdRefs = append(m.createdRefs, payload)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{
+			"ref": payload["ref"],
+			"object": map[string]string{
+				"sha": payload["sha"],
+			},
+		})
+		return
+	}
+
+	// GET /repos/{owner}/{repo}/contents/{path}?ref={branch}
+	if r.Method == http.MethodGet && strings.Contains(path, "/contents/") {
+		// Extract the file path after /contents/
+		idx := strings.Index(path, "/contents/")
+		filePath := path[idx+len("/contents/"):]
+		content, ok := m.fileContents[filePath]
+		if !ok {
+			content = "original content"
+		}
+		encoded := base64.StdEncoding.EncodeToString([]byte(content))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"sha":     "file-sha-123",
+			"content": encoded,
+		})
+		return
+	}
+
+	// PUT /repos/{owner}/{repo}/contents/{path} — patch file
+	if r.Method == http.MethodPut && strings.Contains(path, "/contents/") {
+		var payload map[string]string
+		json.NewDecoder(r.Body).Decode(&payload)
+		m.patchedFiles = append(m.patchedFiles, payload)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{"content": map[string]string{"sha": "new-sha-456"}})
+		return
+	}
+
+	// GET /repos/{owner}/{repo}/pulls?head=...&state=open
+	if r.Method == http.MethodGet && strings.HasSuffix(path, "/pulls") {
+		w.Header().Set("Content-Type", "application/json")
+		// Return existing PRs if any match.
+		if len(m.openPRs) > 0 {
+			json.NewEncoder(w).Encode(m.openPRs)
+		} else {
+			json.NewEncoder(w).Encode([]any{})
+		}
+		return
+	}
+
+	// POST /repos/{owner}/{repo}/pulls — create PR
+	if r.Method == http.MethodPost && strings.HasSuffix(path, "/pulls") {
+		var payload map[string]string
+		json.NewDecoder(r.Body).Decode(&payload)
+		m.createdPRs = append(m.createdPRs, payload)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{
+			"html_url": "https://github.com/test/repo/pull/99",
+			"number":   99,
+		})
+		return
+	}
+
+	// POST — issue or comment creation
 	if r.Method == http.MethodPost {
 		var payload map[string]any
 		json.NewDecoder(r.Body).Decode(&payload)
 
-		// Check if it's an issue creation or a comment.
 		if _, ok := payload["title"]; ok {
 			m.issueCounter++
 			m.createdIssues = append(m.createdIssues, payload)
@@ -290,13 +382,16 @@ func TestFeedbackHandlerInit(t *testing.T) {
 
 func TestFindingJSONRoundTrip(t *testing.T) {
 	finding := Finding{
-		Title:       "CVE-2026-1234",
-		Body:        "Critical vuln in openssl",
-		Severity:    "critical",
-		Labels:      []string{"security", "cve"},
-		CampaignID:  "hs-dep-vuln",
-		RunID:       "run-123",
-		Fingerprint: "cve-2026-1234-openssl",
+		Title:            "CVE-2026-1234",
+		Body:             "Critical vuln in openssl",
+		Severity:         "critical",
+		Labels:           []string{"security", "cve"},
+		CampaignID:       "hs-dep-vuln",
+		RunID:            "run-123",
+		Fingerprint:      "cve-2026-1234-openssl",
+		Fixable:          true,
+		RemediationType:  "dependency_bump",
+		RemediationHints: map[string]string{"file": "go.mod", "find": "v1.0.0", "replace": "v1.0.1"},
 	}
 
 	data, err := json.Marshal(finding)
@@ -314,6 +409,15 @@ func TestFindingJSONRoundTrip(t *testing.T) {
 	}
 	if decoded.Severity != "critical" {
 		t.Errorf("severity = %q, want 'critical'", decoded.Severity)
+	}
+	if !decoded.Fixable {
+		t.Error("Fixable should be true")
+	}
+	if decoded.RemediationType != "dependency_bump" {
+		t.Errorf("RemediationType = %q, want 'dependency_bump'", decoded.RemediationType)
+	}
+	if decoded.RemediationHints["file"] != "go.mod" {
+		t.Errorf("RemediationHints[file] = %q, want 'go.mod'", decoded.RemediationHints["file"])
 	}
 }
 
@@ -381,5 +485,277 @@ func TestSchedulerFeedbackIntegration(t *testing.T) {
 	}
 	if gh.createdIssues[0]["title"] != "Test finding" {
 		t.Errorf("issue title = %v, want 'Test finding'", gh.createdIssues[0]["title"])
+	}
+}
+
+// --- PR Creation Tests ---
+
+func testCampaignWithPRs() *Campaign {
+	return &Campaign{
+		ID: "hs-dep-vuln",
+		Feedback: Feedback{
+			CreateIssues: true,
+			CreatePRs:    true,
+		},
+		Outputs: CampaignOutputs{
+			IssueRepo:      "tinyland-inc/remote-juggler",
+			IssueLabels:    []string{"campaign", "security"},
+			PRBranchPrefix: "sid/dep-update-",
+		},
+		Targets: []Target{
+			{Forge: "github", Org: "tinyland-inc", Repo: "remote-juggler", Branch: "main"},
+		},
+		Guardrails: Guardrails{
+			MaxDuration: "30m",
+			ReadOnly:    false,
+		},
+	}
+}
+
+func fixableFinding() Finding {
+	return Finding{
+		Title:           "Bump lodash from 4.17.20 to 4.17.21",
+		Body:            "lodash 4.17.20 has CVE-2026-9999",
+		Severity:        "high",
+		CampaignID:      "hs-dep-vuln",
+		Fingerprint:     "dep-lodash-4.17.20",
+		Fixable:         true,
+		RemediationType: "dependency_bump",
+		RemediationHints: map[string]string{
+			"file":           "package.json",
+			"find":           `"lodash": "^4.17.20"`,
+			"replace":        `"lodash": "^4.17.21"`,
+			"commit_message": "fix(deps): bump lodash to 4.17.21",
+		},
+	}
+}
+
+func TestPRCreationE2E(t *testing.T) {
+	gh := newMockGitHub()
+	gh.fileContents["package.json"] = `{"dependencies": {"lodash": "^4.17.20"}}`
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+	campaign := testCampaignWithPRs()
+	finding := fixableFinding()
+
+	err := handler.ProcessPRFindings(context.Background(), campaign, []Finding{finding})
+	if err != nil {
+		t.Fatalf("ProcessPRFindings: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	// Should have created a branch.
+	if len(gh.createdRefs) != 1 {
+		t.Fatalf("expected 1 branch created, got %d", len(gh.createdRefs))
+	}
+	if !strings.HasPrefix(gh.createdRefs[0]["ref"], "refs/heads/sid/dep-update-") {
+		t.Errorf("branch ref = %q, want prefix 'refs/heads/sid/dep-update-'", gh.createdRefs[0]["ref"])
+	}
+
+	// Should have patched the file.
+	if len(gh.patchedFiles) != 1 {
+		t.Fatalf("expected 1 file patched, got %d", len(gh.patchedFiles))
+	}
+	if gh.patchedFiles[0]["message"] != "fix(deps): bump lodash to 4.17.21" {
+		t.Errorf("commit message = %q", gh.patchedFiles[0]["message"])
+	}
+	// Verify the patched content has the replacement.
+	patchedContent, _ := base64.StdEncoding.DecodeString(gh.patchedFiles[0]["content"])
+	if !strings.Contains(string(patchedContent), `"lodash": "^4.17.21"`) {
+		t.Errorf("patched content missing replacement: %s", string(patchedContent))
+	}
+
+	// Should have created a PR.
+	if len(gh.createdPRs) != 1 {
+		t.Fatalf("expected 1 PR created, got %d", len(gh.createdPRs))
+	}
+	if gh.createdPRs[0]["base"] != "main" {
+		t.Errorf("PR base = %q, want 'main'", gh.createdPRs[0]["base"])
+	}
+	if !strings.HasPrefix(gh.createdPRs[0]["title"], "fix: ") {
+		t.Errorf("PR title = %q, want prefix 'fix: '", gh.createdPRs[0]["title"])
+	}
+}
+
+func TestPRSkipsNonFixableFindings(t *testing.T) {
+	gh := newMockGitHub()
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+	campaign := testCampaignWithPRs()
+
+	findings := []Finding{
+		{Title: "Info only", Severity: "low", Fixable: false},
+		{Title: "No hints", Fixable: true}, // Missing RemediationHints.
+	}
+
+	err := handler.ProcessPRFindings(context.Background(), campaign, findings)
+	if err != nil {
+		t.Fatalf("ProcessPRFindings: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.createdPRs) != 0 {
+		t.Errorf("expected 0 PRs for non-fixable findings, got %d", len(gh.createdPRs))
+	}
+}
+
+func TestPRSkipsReadOnlyCampaign(t *testing.T) {
+	gh := newMockGitHub()
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+	campaign := testCampaignWithPRs()
+	campaign.Guardrails.ReadOnly = true
+
+	err := handler.ProcessPRFindings(context.Background(), campaign, []Finding{fixableFinding()})
+	if err != nil {
+		t.Fatalf("ProcessPRFindings: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.createdPRs) != 0 {
+		t.Errorf("expected 0 PRs for readOnly campaign, got %d", len(gh.createdPRs))
+	}
+}
+
+func TestPRSkipsWhenCreatePRsDisabled(t *testing.T) {
+	gh := newMockGitHub()
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+	campaign := testCampaignWithPRs()
+	campaign.Feedback.CreatePRs = false
+
+	err := handler.ProcessPRFindings(context.Background(), campaign, []Finding{fixableFinding()})
+	if err != nil {
+		t.Fatalf("ProcessPRFindings: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.createdPRs) != 0 {
+		t.Errorf("expected 0 PRs when CreatePRs=false, got %d", len(gh.createdPRs))
+	}
+}
+
+func TestPRDeduplicatesExistingPR(t *testing.T) {
+	gh := newMockGitHub()
+	gh.fileContents["package.json"] = `{"dependencies": {"lodash": "^4.17.20"}}`
+	// Simulate an existing open PR.
+	gh.openPRs = []map[string]string{
+		{"head": "sid/dep-update-dep-lodash-4-17-20", "number": "42"},
+	}
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+	campaign := testCampaignWithPRs()
+
+	err := handler.ProcessPRFindings(context.Background(), campaign, []Finding{fixableFinding()})
+	if err != nil {
+		t.Fatalf("ProcessPRFindings: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.createdPRs) != 0 {
+		t.Errorf("expected 0 PRs (dedup), got %d", len(gh.createdPRs))
+	}
+}
+
+func TestPRBranchNaming(t *testing.T) {
+	tests := []struct {
+		prefix string
+		fp     string
+		want   string
+	}{
+		{"sid/dep-update-", "dep-lodash-4.17.20", "sid/dep-update-dep-lodash-4-17-20"},
+		{"sid/fix-", "CVE-2026-1234", "sid/fix-cve-2026-1234"},
+		{"sid/security-fix-", "abc", "sid/security-fix-abc"},
+	}
+
+	for _, tt := range tests {
+		f := Finding{Fingerprint: tt.fp}
+		got := prBranchName(tt.prefix, f)
+		if got != tt.want {
+			t.Errorf("prBranchName(%q, %q) = %q, want %q", tt.prefix, tt.fp, got, tt.want)
+		}
+	}
+}
+
+func TestPRBodyGeneration(t *testing.T) {
+	campaign := testCampaignWithPRs()
+	finding := fixableFinding()
+
+	body := buildPRBody(campaign, finding)
+	if !strings.Contains(body, "Automated Remediation") {
+		t.Error("PR body should contain 'Automated Remediation'")
+	}
+	if !strings.Contains(body, "hs-dep-vuln") {
+		t.Error("PR body should contain campaign ID")
+	}
+	if !strings.Contains(body, "high") {
+		t.Error("PR body should contain severity")
+	}
+	if !strings.Contains(body, "dependency_bump") {
+		t.Error("PR body should contain remediation type")
+	}
+}
+
+func TestPRBodyTemplate(t *testing.T) {
+	campaign := testCampaignWithPRs()
+	campaign.Outputs.PRBodyTemplate = "Fix {{title}} (severity: {{severity}}) from campaign {{campaign}}"
+	finding := fixableFinding()
+
+	body := buildPRBody(campaign, finding)
+	expected := "Fix Bump lodash from 4.17.20 to 4.17.21 (severity: high) from campaign hs-dep-vuln"
+	if body != expected {
+		t.Errorf("PR body = %q, want %q", body, expected)
+	}
+}
+
+func TestSchedulerPRFeedbackIntegration(t *testing.T) {
+	gh := newMockGitHub()
+	gh.fileContents["package.json"] = `{"dependencies": {"lodash": "^4.17.20"}}`
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	feedback := newTestFeedback(server)
+
+	campaign := testCampaignWithPRs()
+	registry := map[string]*Campaign{campaign.ID: campaign}
+	scheduler := NewScheduler(registry, nil, nil)
+	scheduler.SetFeedback(feedback)
+
+	result := &CampaignResult{
+		CampaignID: campaign.ID,
+		Status:     "success",
+		Findings:   []Finding{fixableFinding()},
+	}
+	scheduler.storeResult(context.Background(), campaign, result)
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	// Should create both an issue AND a PR.
+	if len(gh.createdIssues) != 1 {
+		t.Errorf("expected 1 issue, got %d", len(gh.createdIssues))
+	}
+	if len(gh.createdPRs) != 1 {
+		t.Errorf("expected 1 PR from scheduler integration, got %d", len(gh.createdPRs))
 	}
 }

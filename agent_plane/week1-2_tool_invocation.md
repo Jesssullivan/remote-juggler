@@ -61,9 +61,9 @@ The OCaml MCP tools expect a `target` parameter (singular) of type string (e.g.,
 
 Furthermore, HexStrike tools like `credential_scan`, `vuln_scan`, `container_scan`, `port_scan`, `tls_check`, and `network_posture` each have different required parameters beyond just `target`. The adapter sends the same generic argument set to every tool.
 
-### Root Cause 3: PicoClaw -- Tool Calls Hardcoded to Zero
+### Root Cause 3: TinyClaw -- Tool Calls Hardcoded to Zero
 
-**File**: `deploy/adapters/picoclaw.go`, line 187
+**File**: `deploy/adapters/tinyclaw.go`, line 187
 
 ```go
 return &LastResult{
@@ -939,9 +939,9 @@ kubectl set image deployment/hexstrike-ai adapter=ghcr.io/tinyland-inc/remote-ju
 
 ---
 
-### Day 6: PicoClaw Tool Call Tracking
+### Day 6: TinyClaw Tool Call Tracking
 
-**Objective**: Fix the hardcoded `ToolCalls: 0` in picoclaw.go so campaign results reflect actual tool usage.
+**Objective**: Fix the hardcoded `ToolCalls: 0` in tinyclaw.go so campaign results reflect actual tool usage.
 
 #### Approach: Parse tool usage from TinyClaw's response content
 
@@ -954,7 +954,7 @@ TinyClaw's `/api/dispatch` returns `{content, finish_reason}`. The `content` fie
 #### Step 1: Check if TinyClaw's /api/status exposes tool metrics
 
 ```bash
-kubectl exec -n fuzzy-dev deploy/picoclaw-agent -c picoclaw -- \
+kubectl exec -n fuzzy-dev deploy/tinyclaw-agent -c tinyclaw -- \
   wget -qO- 'http://127.0.0.1:18790/api/status'
 ```
 
@@ -962,7 +962,7 @@ If the status response includes tool call counts, use Option A.
 
 #### Step 2: Implement Option A (preferred) or Option B
 
-**File**: `deploy/adapters/picoclaw.go`, lines 162-190
+**File**: `deploy/adapters/tinyclaw.go`, lines 162-190
 
 If TinyClaw's `/api/status` includes a `tool_calls` or `tools_used` field after dispatch:
 
@@ -1025,11 +1025,11 @@ func countToolReferences(content string, knownTools []string) int {
 }
 ```
 
-#### Step 3: Also pass description, targets, guardrails to PicoClaw
+#### Step 3: Also pass description, targets, guardrails to TinyClaw
 
 Apply the same prompt enrichment as IronClaw. Update the campaign struct parsing:
 
-**File**: `deploy/adapters/picoclaw.go`, lines 105-111
+**File**: `deploy/adapters/tinyclaw.go`, lines 105-111
 
 ```go
 // BEFORE:
@@ -1103,7 +1103,7 @@ prompt := promptBuilder.String()
 
 #### Test Plan
 
-Add to `deploy/adapters/picoclaw_test.go`:
+Add to `deploy/adapters/tinyclaw_test.go`:
 
 ```go
 func TestPicoclawBackend_ToolCallCounting(t *testing.T) {
@@ -1118,7 +1118,7 @@ func TestPicoclawBackend_ToolCallCounting(t *testing.T) {
     b := NewPicoclawBackend(agent.URL, "")
     campaign := json.RawMessage(`{
         "id":"pc-identity-audit",
-        "name":"PicoClaw Identity Audit",
+        "name":"TinyClaw Identity Audit",
         "process":["Check identity"],
         "tools":["juggler_status","juggler_list_identities","juggler_campaign_status"]
     }`)
@@ -1149,11 +1149,11 @@ func TestPicoclawBackend_EnrichedPrompt(t *testing.T) {
     b := NewPicoclawBackend(agent.URL, "")
     campaign := json.RawMessage(`{
         "id":"pc-identity-audit",
-        "name":"PicoClaw Identity Audit",
+        "name":"TinyClaw Identity Audit",
         "description":"Verifies bot identity state",
         "process":["Query identity","Report findings"],
         "tools":["juggler_status"],
-        "targets":[{"org":"tinyland-inc","repo":"picoclaw"}],
+        "targets":[{"org":"tinyland-inc","repo":"tinyclaw"}],
         "guardrails":{"maxDuration":"15m","readOnly":true},
         "metrics":{"successCriteria":"Identity verified"}
     }`)
@@ -1184,7 +1184,7 @@ cd /home/jsullivan2/git/RemoteJuggler/deploy/adapters && go test -v -run TestPic
 
 ### Day 7: Campaign Prompt Template Standardization
 
-**Objective**: Extract the common prompt template into a shared function used by both ironclaw.go and picoclaw.go.
+**Objective**: Extract the common prompt template into a shared function used by both ironclaw.go and tinyclaw.go.
 
 #### Step 1: Create shared prompt builder
 
@@ -1226,7 +1226,7 @@ type TargetInfo struct {
 // BuildCampaignPrompt generates a structured LLM prompt from campaign context.
 // The toolInstruction parameter controls how the agent should invoke tools:
 //   - For IronClaw: 'exec("/workspace/bin/rj-tool <tool> key=value")'
-//   - For PicoClaw: tools are available natively via the agent's tool system
+//   - For TinyClaw: tools are available natively via the agent's tool system
 func BuildCampaignPrompt(ctx CampaignContext, toolInstruction string) string {
     var b strings.Builder
 
@@ -1311,7 +1311,7 @@ func BuildCampaignPrompt(ctx CampaignContext, toolInstruction string) string {
 
 Replace the Day 1 inline prompt builder with a call to `BuildCampaignPrompt`.
 
-#### Step 3: Refactor picoclaw.go to use shared prompt builder
+#### Step 3: Refactor tinyclaw.go to use shared prompt builder
 
 Replace the Day 6 inline prompt builder with a call to `BuildCampaignPrompt`.
 
@@ -1413,7 +1413,7 @@ Counting from `index.json` (47 enabled + 1 disabled = 48 total):
 |-------|-------|-----|
 | ironclaw | 19 | oc-gateway-smoketest, oc-dep-audit, oc-coverage-gaps, oc-docs-freshness, oc-license-scan, oc-dead-code, oc-ts-strict, oc-a11y-check, oc-weekly-digest, oc-issue-triage, oc-prompt-audit, oc-codeql-fix, oc-wiki-update, oc-upstream-sync, oc-self-evolve, oc-fork-review, oc-identity-audit, oc-credential-health, oc-secret-request, oc-token-budget, oc-ts-package-audit, oc-infra-review |
 | hexstrike-ai | 7 | hs-cred-exposure, hs-dep-vuln, hs-cve-monitor, hs-network-posture, hs-gateway-pentest, hs-sops-rotation, hs-container-vuln |
-| picoclaw | 5 | pc-upstream-sync, pc-self-evolve, pc-ts-package-scan, pc-credential-health, pc-identity-audit |
+| tinyclaw | 5 | pc-upstream-sync, pc-self-evolve, pc-ts-package-scan, pc-credential-health, pc-identity-audit |
 | gateway-direct | 5 | cc-mcp-regression, cc-identity-switch, cc-config-sync, cc-cred-resolution, cc-gateway-health |
 | cross-agent | 8 | xa-audit-completeness, xa-cred-lifecycle, xa-acl-enforcement, xa-fork-health, xa-identity-audit, xa-platform-health, xa-token-budget, xa-upstream-drift |
 
@@ -1572,7 +1572,7 @@ for cid, info in sorted(data.items()):
 |--------|--------|--------------|
 | IronClaw tool_calls > 0 | At least 5 campaigns | `check_progress.sh` -- filter for oc-* campaigns with tool_calls > 0 |
 | HexStrike native tools return real data | credential_scan, vuln_scan, container_scan return non-error results | ToolTrace summaries longer than 50 chars, no "target is required" |
-| PicoClaw tool_calls accurately tracked | At least 3 campaigns report tool_calls > 0 | pc-identity-audit, pc-credential-health, pc-ts-package-scan |
+| TinyClaw tool_calls accurately tracked | At least 3 campaigns report tool_calls > 0 | pc-identity-audit, pc-credential-health, pc-ts-package-scan |
 | 35+ campaigns run at least once | 35 of 47 enabled campaigns | `check_progress.sh` "Run at least once" line |
 | 10+ campaigns with real findings | 10 campaigns have non-empty Findings arrays | `check_progress.sh` "With findings" line |
 
@@ -1665,8 +1665,8 @@ This would be a minor enhancement to `/workspace/bin/rj-tool`.
 | `deploy/adapters/ironclaw_test.go` | Add enriched prompt test, exec tool pattern test | 1-2 |
 | `deploy/adapters/hexstrike.go` | Tool schema registry, fix target parameter, per-target dispatch | 4 |
 | `deploy/adapters/hexstrike_test.go` | Add correct parameter test | 4 |
-| `deploy/adapters/picoclaw.go` | Tool call counting, enriched prompt, expanded struct | 6 |
-| `deploy/adapters/picoclaw_test.go` | Add tool counting test, enriched prompt test | 6 |
+| `deploy/adapters/tinyclaw.go` | Tool call counting, enriched prompt, expanded struct | 6 |
+| `deploy/adapters/tinyclaw_test.go` | Add tool counting test, enriched prompt test | 6 |
 | `deploy/adapters/prompt.go` | New shared prompt builder | 7 |
 | `deploy/adapters/prompt_test.go` | New prompt builder tests | 7 |
 | `agent_plane/check_progress.sh` | New activation tracking script | 8 |

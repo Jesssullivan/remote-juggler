@@ -2,7 +2,7 @@
   "id": "pc-ts-package-scan",
   "name": "PicoClaw TS Package Scan",
   "description": "PicoClaw lightweight scan of tinyland-inc TypeScript packages for broken imports, missing types, and dead exports",
-  "agent": "picoclaw",
+  "agent": "tinyclaw",
   "trigger": {
     "schedule": "0 3 * * 0",
     "event": "manual"

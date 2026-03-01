@@ -94,18 +94,19 @@
       "security",
       "dependency-vuln"
     ],
-    "issueRepo": "tinyland-inc/remote-juggler"
+    "issueRepo": "tinyland-inc/remote-juggler",
+    "prBranchPrefix": "sid/dep-update-"
   },
   "guardrails": {
     "maxDuration": "30m",
-    "readOnly": true,
+    "readOnly": false,
     "aiApiBudget": {
       "maxTokens": 100000
     }
   },
   "feedback": {
     "createIssues": true,
-    "createPRs": false,
+    "createPRs": true,
     "closeResolvedIssues": true
   },
   "metrics": {

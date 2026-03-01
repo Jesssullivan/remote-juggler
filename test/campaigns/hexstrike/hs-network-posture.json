@@ -26,7 +26,7 @@
     "juggler_setec_put"
   ],
   "process": [
-    "Enumerate all tailnet services: rj-gateway, setec, ironclaw, picoclaw-agent, hexstrike-ai-agent",
+    "Enumerate all tailnet services: rj-gateway, setec, ironclaw, tinyclaw-agent, hexstrike-ai-agent",
     "For each service: verify TLS certificate validity, expiration date, and certificate chain completeness",
     "Check for unexpected open ports via port scan within the tailnet (expected ports only: 443/HTTPS, 8080/health, SSE endpoints)",
     "Verify Tailscale ACL grants match expected configuration from deploy/tailscale-acl-grants.hujson",

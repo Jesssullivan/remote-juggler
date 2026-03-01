@@ -181,7 +181,7 @@ This is run #N of campaign {id}. Last run was {duration} ago.
 +      "maxTokens": 200000
 ```
 
-**File**: `/home/jsullivan2/git/RemoteJuggler/test/campaigns/picoclaw/pc-self-evolve.json`
+**File**: `/home/jsullivan2/git/RemoteJuggler/test/campaigns/tinyclaw/pc-self-evolve.json`
 
 ```diff
 -    "maxDuration": "3m",
@@ -480,7 +480,7 @@ Extend the response to include per-agent breakdown:
   },
   "by_agent": {
     "ironclaw": { "input_tokens": 200000, "output_tokens": 60000, "tool_calls": 150 },
-    "picoclaw": { "input_tokens": 100000, "output_tokens": 30000, "tool_calls": 90 },
+    "tinyclaw": { "input_tokens": 100000, "output_tokens": 30000, "tool_calls": 90 },
     "hexstrike-ai": { "input_tokens": 150000, "output_tokens": 30000, "tool_calls": 100 }
   },
   "by_campaign": {
@@ -650,7 +650,7 @@ HexStrike already uses Dhall for policy definitions. Create a Dhall type for cam
 **New file**: `/home/jsullivan2/git/RemoteJuggler/test/campaigns/Campaign.dhall`
 
 ```dhall
-let Agent = < ironclaw | picoclaw | hexstrike-ai | gateway-direct >
+let Agent = < ironclaw | tinyclaw | hexstrike-ai | gateway-direct >
 let Trigger = { schedule : Optional Text, event : Optional Text, dependsOn : Optional (List Text) }
 let Guardrails = { maxDuration : Text, readOnly : Bool }
 let Campaign = { id : Text, name : Text, agent : Agent, trigger : Trigger, guardrails : Guardrails }
@@ -1013,7 +1013,7 @@ Each metric below must be independently verifiable. "Verifiable" means a specifi
 | 1 | Self-evolve campaigns complete without timeout | `juggler_setec_get(name="campaigns/oc-self-evolve/latest")` | `status != "timeout"` |
 | 2 | MEMORY.md has real observations | `gh api repos/tinyland-inc/ironclaw/contents/workspace/memory/MEMORY.md` | "Observations" section is non-empty, contains dates |
 | 3 | At least 1 agent-authored PR | `gh pr list --repo tinyland-inc/remote-juggler --label self-evolution --author "app/rj-agent-bot"` | Count >= 1 |
-| 4 | Aperture per-agent token report | `juggler_aperture_usage()` | `by_agent` has entries for ironclaw, picoclaw, hexstrike-ai |
+| 4 | Aperture per-agent token report | `juggler_aperture_usage()` | `by_agent` has entries for ironclaw, tinyclaw, hexstrike-ai |
 | 5 | All enabled campaigns ran at least once | Check Setec `campaigns/{id}/latest` for each | All 48+ have non-null `status` |
 | 6 | Zero duplicate Discussions | `gh api graphql` query for discussions with same title | No duplicates within 1-hour window |
 | 7 | Circuit breaker tested | Unit test `TestCircuitBreaker` passes | 3 failures trip, cooldown resets |
@@ -1073,10 +1073,10 @@ In concrete terms at the end of Week 6: you should be able to leave the cluster 
 | `test/campaigns/runner/dispatcher.go` | Accept `*CampaignResult` in `Dispatch()` and `dispatchToAgent()` |
 | `deploy/adapters/adapter.go` | Extend `CampaignRequest` with `PreviousResult`, add guardrail prompt injection |
 | `deploy/adapters/ironclaw.go` | Inject previous-run context and branch constraints into prompt |
-| `deploy/adapters/picoclaw.go` | Inject previous-run context into prompt |
+| `deploy/adapters/tinyclaw.go` | Inject previous-run context into prompt |
 | `deploy/adapters/hexstrike.go` | Inject previous-run context into prompt |
 | `test/campaigns/openclaw/oc-self-evolve.json` | Timeout 5m->25m, tokens 80K->200K, enable createIssues/createPRs, add allowedBranches, add github write tools, add self-modification process steps |
-| `test/campaigns/picoclaw/pc-self-evolve.json` | Timeout 3m->20m, tokens 50K->150K, enable createIssues, add cross-agent memory steps |
+| `test/campaigns/tinyclaw/pc-self-evolve.json` | Timeout 3m->20m, tokens 50K->150K, enable createIssues, add cross-agent memory steps |
 | `test/campaigns/cross-agent/xa-provision-agent.json` | readOnly false, add allowedBranches, add feedback/metrics |
 | `test/campaigns/index.json` | Add `hs-self-evolve` entry |
 | `gateway/tools.go` | Enhance `juggler_aperture_usage` response with per-agent/per-campaign breakdown |

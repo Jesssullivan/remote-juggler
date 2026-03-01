@@ -7,8 +7,8 @@ import (
 
 func TestGatewayToolsCount(t *testing.T) {
 	tools := gatewayTools()
-	if len(tools) != 18 {
-		t.Errorf("gatewayTools() returned %d tools, want 18", len(tools))
+	if len(tools) != 23 {
+		t.Errorf("gatewayTools() returned %d tools, want 23", len(tools))
 	}
 }
 
@@ -32,6 +32,11 @@ func TestGatewayToolNames(t *testing.T) {
 		"juggler_request_secret":    true,
 		"juggler_campaign_trigger":  true,
 		"juggler_campaign_list":     true,
+		"github_discussion_list":    true,
+		"github_discussion_get":     true,
+		"github_discussion_search":  true,
+		"github_discussion_reply":   true,
+		"github_discussion_label":   true,
 	}
 
 	tools := gatewayTools()
@@ -103,9 +108,9 @@ func TestInjectGatewayTools(t *testing.T) {
 		t.Fatalf("failed to unmarshal modified response: %v", err)
 	}
 
-	// Should have 2 Chapel tools + 18 gateway tools = 20.
-	if len(msg.Result.Tools) != 20 {
-		t.Errorf("injected response has %d tools, want 20", len(msg.Result.Tools))
+	// Should have 2 Chapel tools + 23 gateway tools = 25.
+	if len(msg.Result.Tools) != 25 {
+		t.Errorf("injected response has %d tools, want 25", len(msg.Result.Tools))
 	}
 }
 
@@ -139,9 +144,9 @@ func TestGatewayOnlyToolsList(t *testing.T) {
 	if msg.ID != 42 {
 		t.Errorf("id = %d, want 42", msg.ID)
 	}
-	// Should have 18 gateway tools (no Chapel tools).
-	if len(msg.Result.Tools) != 18 {
-		t.Errorf("gateway-only response has %d tools, want 18", len(msg.Result.Tools))
+	// Should have 23 gateway tools (no Chapel tools).
+	if len(msg.Result.Tools) != 23 {
+		t.Errorf("gateway-only response has %d tools, want 23", len(msg.Result.Tools))
 	}
 }
 

@@ -226,6 +226,11 @@ var gatewayToolNames = map[string]bool{
 	"juggler_request_secret":    true,
 	"juggler_campaign_trigger":  true,
 	"juggler_campaign_list":     true,
+	"github_discussion_list":    true,
+	"github_discussion_get":     true,
+	"github_discussion_search":  true,
+	"github_discussion_reply":   true,
+	"github_discussion_label":   true,
 }
 
 // HandleRPC handles POST /mcp JSON-RPC requests.
@@ -549,6 +554,83 @@ func (p *MCPProxy) handleGatewayTool(id json.RawMessage, tool string, args json.
 				Caller:  caller,
 				Action:  "github_create_issue",
 				Query:   fmt.Sprintf("%s/%s: %s", a.Owner, a.Repo, a.Title),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_discussion_list":
+		result, err = p.github.DiscussionList(ctx, args)
+		if p.audit != nil {
+			var a struct{ Owner, Repo string }
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_discussion_list",
+				Query:   fmt.Sprintf("%s/%s", a.Owner, a.Repo),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_discussion_get":
+		result, err = p.github.DiscussionGet(ctx, args)
+		if p.audit != nil {
+			var a struct {
+				Owner  string
+				Repo   string
+				Number int
+			}
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_discussion_get",
+				Query:   fmt.Sprintf("%s/%s#%d", a.Owner, a.Repo, a.Number),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_discussion_search":
+		result, err = p.github.DiscussionSearch(ctx, args)
+		if p.audit != nil {
+			var a struct{ Owner, Repo, Query string }
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_discussion_search",
+				Query:   fmt.Sprintf("%s/%s: %s", a.Owner, a.Repo, a.Query),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_discussion_reply":
+		result, err = p.github.DiscussionReply(ctx, args)
+		if p.audit != nil {
+			var a struct {
+				Owner  string
+				Repo   string
+				Number int
+			}
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_discussion_reply",
+				Query:   fmt.Sprintf("%s/%s#%d", a.Owner, a.Repo, a.Number),
+				Allowed: err == nil,
+			})
+		}
+
+	case "github_discussion_label":
+		result, err = p.github.DiscussionLabel(ctx, args)
+		if p.audit != nil {
+			var a struct {
+				Owner  string
+				Repo   string
+				Number int
+			}
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "github_discussion_label",
+				Query:   fmt.Sprintf("%s/%s#%d", a.Owner, a.Repo, a.Number),
 				Allowed: err == nil,
 			})
 		}

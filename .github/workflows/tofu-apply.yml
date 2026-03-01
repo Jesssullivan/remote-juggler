@@ -22,9 +22,13 @@ concurrency:
   group: tofu-apply
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
   apply:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # Skip if the commit is from this workflow (prevent loops).
     if: "!contains(github.event.head_commit.message, '[skip-tofu]')"
     steps:
@@ -85,7 +89,7 @@ jobs:
 
       - name: Verify pods healthy
         run: |
-          LABELS='app in (rj-gateway,ironclaw-agent,picoclaw-agent,hexstrike-ai-agent,setec)'
+          LABELS='app in (rj-gateway,ironclaw-agent,tinyclaw-agent,hexstrike-ai-agent,setec)'
           # Retry up to 6 times (3 minutes total) — Civo volume attach can
           # take 60-90s after Recreate strategy pod replacement.
           for attempt in $(seq 1 6); do

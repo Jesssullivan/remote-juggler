@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import time
@@ -252,7 +253,7 @@ def cmd_network_posture(args):
         ("rj-gateway", "rj-gateway.fuzzy-dev.svc.cluster.local", 8080),
         ("aperture", "aperture.fuzzy-dev.svc.cluster.local", 80),
         ("ironclaw", "ironclaw-agent.fuzzy-dev.svc.cluster.local", 8080),
-        ("picoclaw", "picoclaw-agent.fuzzy-dev.svc.cluster.local", 8080),
+        ("tinyclaw", "tinyclaw-agent.fuzzy-dev.svc.cluster.local", 8080),
     ]
 
     for name, host, port in services:
@@ -431,7 +432,7 @@ def api_command():
 
     # Execute external tool
     try:
-        argv = command_str.split()
+        argv = shlex.split(command_str)
         result = subprocess.run(argv, capture_output=True, text=True, timeout=300)
         elapsed = time.time() - start
         return jsonify(

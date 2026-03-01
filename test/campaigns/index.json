@@ -201,13 +201,13 @@
       "lastResult": null
     },
     "pc-upstream-sync": {
-      "file": "picoclaw/pc-upstream-sync.json",
+      "file": "tinyclaw/pc-upstream-sync.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "pc-self-evolve": {
-      "file": "picoclaw/pc-self-evolve.json",
+      "file": "tinyclaw/pc-self-evolve.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
@@ -278,6 +278,24 @@
       "lastRun": null,
       "lastResult": null
     },
+    "xa-finding-handoff": {
+      "file": "cross-agent/xa-finding-handoff.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "hs-handoff-response": {
+      "file": "hexstrike/hs-handoff-response.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "oc-handoff-response": {
+      "file": "openclaw/oc-handoff-response.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
     "xa-provision-agent": {
       "file": "cross-agent/xa-provision-agent.json",
       "enabled": false,
@@ -285,19 +303,19 @@
       "lastResult": null
     },
     "pc-ts-package-scan": {
-      "file": "picoclaw/pc-ts-package-scan.json",
+      "file": "tinyclaw/pc-ts-package-scan.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "pc-credential-health": {
-      "file": "picoclaw/pc-credential-health.json",
+      "file": "tinyclaw/pc-credential-health.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null
     },
     "pc-identity-audit": {
-      "file": "picoclaw/pc-identity-audit.json",
+      "file": "tinyclaw/pc-identity-audit.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null

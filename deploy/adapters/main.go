@@ -7,7 +7,7 @@
 // Usage:
 //
 //	adapter --agent-type=ironclaw --agent-url=http://localhost:18789 --listen-port=8080
-//	adapter --agent-type=picoclaw --agent-url=http://localhost:18790 --listen-port=8080 --gateway-url=http://rj-gateway:8080
+//	adapter --agent-type=tinyclaw --agent-url=http://localhost:18790 --listen-port=8080 --gateway-url=http://rj-gateway:8080
 //	adapter --agent-type=hexstrike-ai --agent-url=http://localhost:8888 --listen-port=8080
 package main
 
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	agentType := flag.String("agent-type", envOrDefault("ADAPTER_AGENT_TYPE", ""), "agent type: ironclaw, picoclaw, hexstrike-ai")
+	agentType := flag.String("agent-type", envOrDefault("ADAPTER_AGENT_TYPE", ""), "agent type: ironclaw, tinyclaw, hexstrike-ai")
 	agentURL := flag.String("agent-url", envOrDefault("ADAPTER_AGENT_URL", ""), "base URL of the agent container")
 	listenPort := flag.Int("listen-port", intEnvOrDefault("ADAPTER_LISTEN_PORT", 8080), "HTTP port to listen on")
 	gatewayURL := flag.String("gateway-url", envOrDefault("ADAPTER_GATEWAY_URL", ""), "rj-gateway URL (for tool proxy)")

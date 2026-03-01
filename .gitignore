@@ -107,3 +107,7 @@ CLAUDE.md
 CLAUDE.local.md
 **/CLAUDE.md
 **/CLAUDE.local.md
+
+# Go build artifacts
+deploy/adapters/adapter
+aperture-bootstrap/

@@ -12,7 +12,7 @@
   },
   "process": [
     "Query IronClaw identity state via juggler_status()",
-    "Query PicoClaw health via picoclaw adapter /health endpoint",
+    "Query TinyClaw health via tinyclaw adapter /health endpoint",
     "Query HexStrike-AI health via hexstrike adapter /health endpoint",
     "Verify all agents can resolve their own credentials",
     "Check cross-agent Setec secret access (agents/*/status)",

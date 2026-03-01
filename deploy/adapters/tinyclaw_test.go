@@ -11,14 +11,14 @@ import (
 	"testing"
 )
 
-func TestPicoclawBackend_Type(t *testing.T) {
-	b := NewPicoclawBackend("http://localhost:18790", "")
-	if b.Type() != "picoclaw" {
-		t.Errorf("expected picoclaw, got %s", b.Type())
+func TestTinyclawBackend_Type(t *testing.T) {
+	b := NewTinyclawBackend("http://localhost:18790", "")
+	if b.Type() != "tinyclaw" {
+		t.Errorf("expected tinyclaw, got %s", b.Type())
 	}
 }
 
-func TestPicoclawBackend_Health(t *testing.T) {
+func TestTinyclawBackend_Health(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/status" {
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -28,13 +28,13 @@ func TestPicoclawBackend_Health(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	if err := b.Health(); err != nil {
 		t.Fatalf("health error: %v", err)
 	}
 }
 
-func TestPicoclawBackend_HealthFallback(t *testing.T) {
+func TestTinyclawBackend_HealthFallback(t *testing.T) {
 	// Server only supports legacy /health, not /api/status.
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
@@ -45,13 +45,13 @@ func TestPicoclawBackend_HealthFallback(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	if err := b.Health(); err != nil {
 		t.Fatalf("health fallback error: %v", err)
 	}
 }
 
-func TestPicoclawBackend_Dispatch(t *testing.T) {
+func TestTinyclawBackend_Dispatch(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/dispatch" {
 			t.Errorf("expected /api/dispatch, got %s", r.URL.Path)
@@ -78,7 +78,7 @@ func TestPicoclawBackend_Dispatch(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
 
 	result, err := b.Dispatch(campaign, "run-1")
@@ -90,7 +90,7 @@ func TestPicoclawBackend_Dispatch(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_DispatchWithFindings(t *testing.T) {
+func TestTinyclawBackend_DispatchWithFindings(t *testing.T) {
 	findingsJSON := `__findings__[{"title":"Dead code in utils.go","body":"Function unused","severity":"low","labels":["cleanup"],"fingerprint":"dead-code-utils-001"}]__end_findings__`
 
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +101,7 @@ func TestPicoclawBackend_DispatchWithFindings(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	campaign := json.RawMessage(`{"id":"oc-dead-code","name":"Dead Code","process":["scan"],"tools":[]}`)
 
 	result, err := b.Dispatch(campaign, "run-p1")
@@ -123,7 +123,7 @@ func TestPicoclawBackend_DispatchWithFindings(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_DispatchError(t *testing.T) {
+func TestTinyclawBackend_DispatchError(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{
 			"content":       "",
@@ -133,7 +133,7 @@ func TestPicoclawBackend_DispatchError(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
 
 	result, err := b.Dispatch(campaign, "run-1")
@@ -148,13 +148,13 @@ func TestPicoclawBackend_DispatchError(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_DispatchHTTPError(t *testing.T) {
+func TestTinyclawBackend_DispatchHTTPError(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
 
 	result, err := b.Dispatch(campaign, "run-1")
@@ -166,7 +166,7 @@ func TestPicoclawBackend_DispatchHTTPError(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_SkillsInjection(t *testing.T) {
+func TestTinyclawBackend_SkillsInjection(t *testing.T) {
 	// Create temp skills directory with a test skill.
 	dir := t.TempDir()
 	skillDir := filepath.Join(dir, "test-skill")
@@ -186,7 +186,7 @@ func TestPicoclawBackend_SkillsInjection(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	b.SetSkillsDir(dir)
 
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["check identity"],"tools":[]}`)
@@ -203,7 +203,7 @@ func TestPicoclawBackend_SkillsInjection(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_SkillsNoDir(t *testing.T) {
+func TestTinyclawBackend_SkillsNoDir(t *testing.T) {
 	var capturedContent string
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
@@ -217,7 +217,7 @@ func TestPicoclawBackend_SkillsNoDir(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	// No SetSkillsDir — skills should not appear.
 
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["scan"],"tools":[]}`)
@@ -231,7 +231,7 @@ func TestPicoclawBackend_SkillsNoDir(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_DispatchToolCounting(t *testing.T) {
+func TestTinyclawBackend_DispatchToolCounting(t *testing.T) {
 	// Verify tool references in output are counted.
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{
@@ -241,7 +241,7 @@ func TestPicoclawBackend_DispatchToolCounting(t *testing.T) {
 	}))
 	defer agent.Close()
 
-	b := NewPicoclawBackend(agent.URL, "")
+	b := NewTinyclawBackend(agent.URL, "")
 	campaign := json.RawMessage(`{"id":"test","name":"test","process":["audit"],"tools":["juggler_status","juggler_list_identities","juggler_validate"]}`)
 
 	result, err := b.Dispatch(campaign, "run-tc-1")
@@ -272,7 +272,7 @@ func TestCountToolReferences(t *testing.T) {
 	}
 }
 
-func TestPicoclawBackend_LoadSkillsMultiple(t *testing.T) {
+func TestTinyclawBackend_LoadSkillsMultiple(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"skill-a", "skill-b"} {
 		sd := filepath.Join(dir, name)
@@ -280,7 +280,7 @@ func TestPicoclawBackend_LoadSkillsMultiple(t *testing.T) {
 		os.WriteFile(filepath.Join(sd, "SKILL.md"), []byte("# "+name+"\nContent for "+name), 0o644)
 	}
 
-	b := NewPicoclawBackend("http://localhost:1234", "")
+	b := NewTinyclawBackend("http://localhost:1234", "")
 	b.SetSkillsDir(dir)
 
 	result := b.loadSkills()

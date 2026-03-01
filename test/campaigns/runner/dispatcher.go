@@ -16,7 +16,7 @@ import (
 type Dispatcher struct {
 	gatewayURL     string
 	ironclawURL    string
-	picoclawURL    string
+	tinyclawURL    string
 	hexstrikeAIURL string
 	httpClient     *http.Client
 }
@@ -33,11 +33,11 @@ type DispatchResult struct {
 
 // NewDispatcher creates a Dispatcher targeting the given rj-gateway URL.
 // Agent URLs point to adapter sidecars that bridge campaign protocol to native APIs.
-func NewDispatcher(gatewayURL, ironclawURL, picoclawURL, hexstrikeAIURL string) *Dispatcher {
+func NewDispatcher(gatewayURL, ironclawURL, tinyclawURL, hexstrikeAIURL string) *Dispatcher {
 	return &Dispatcher{
 		gatewayURL:     gatewayURL,
 		ironclawURL:    ironclawURL,
-		picoclawURL:    picoclawURL,
+		tinyclawURL:    tinyclawURL,
 		hexstrikeAIURL: hexstrikeAIURL,
 		httpClient: &http.Client{
 			Timeout: 2 * time.Minute,
@@ -48,7 +48,7 @@ func NewDispatcher(gatewayURL, ironclawURL, picoclawURL, hexstrikeAIURL string) 
 // Dispatch executes a campaign by routing to the appropriate agent.
 // Agent names map to adapter sidecar URLs:
 //   - "ironclaw"/"openclaw" → IronClaw adapter (same pod, localhost:8080)
-//   - "picoclaw"            → PicoClaw adapter (K8s Service)
+//   - "tinyclaw"            → TinyClaw adapter (K8s Service)
 //   - "hexstrike-ai"/"hexstrike" → HexStrike-AI adapter (K8s Service)
 //   - "gateway-direct"/default → direct MCP tool calls via rj-gateway
 func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID string) (*DispatchResult, error) {
@@ -59,14 +59,14 @@ func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID str
 			url = "http://localhost:8080" // adapter sidecar in same pod
 		}
 		return d.dispatchToAgent(ctx, campaign, runID, url)
-	case "picoclaw":
-		if d.picoclawURL == "" {
-			return &DispatchResult{Error: "picoclaw agent URL not configured"}, nil
+	case "tinyclaw":
+		if d.tinyclawURL == "" {
+			return &DispatchResult{Error: "tinyclaw agent URL not configured"}, nil
 		}
-		if err := d.checkAgentHealth(ctx, d.picoclawURL); err != nil {
-			return &DispatchResult{Error: fmt.Sprintf("picoclaw agent unavailable: %v", err)}, nil
+		if err := d.checkAgentHealth(ctx, d.tinyclawURL); err != nil {
+			return &DispatchResult{Error: fmt.Sprintf("tinyclaw agent unavailable: %v", err)}, nil
 		}
-		return d.dispatchToAgent(ctx, campaign, runID, d.picoclawURL)
+		return d.dispatchToAgent(ctx, campaign, runID, d.tinyclawURL)
 	case "hexstrike-ai", "hexstrike":
 		if d.hexstrikeAIURL == "" {
 			return &DispatchResult{Error: "hexstrike-ai agent URL not configured"}, nil

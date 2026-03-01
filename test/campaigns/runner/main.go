@@ -2,7 +2,7 @@
 //
 // Runs as a sidecar in the IronClaw pod. Reads campaign definitions from
 // a mounted ConfigMap, evaluates triggers (cron, event, manual), and dispatches
-// work to agents (IronClaw, PicoClaw, HexStrike-AI) via adapter sidecars or
+// work to agents (IronClaw, TinyClaw, HexStrike-AI) via adapter sidecars or
 // rj-gateway MCP tool calls. Results are collected and stored in Setec.
 //
 // Usage:
@@ -32,7 +32,7 @@ func main() {
 	campaignsDir := flag.String("campaigns-dir", envOrDefault("CAMPAIGNS_DIR", "/etc/campaigns"), "path to campaign definitions")
 	gatewayURL := flag.String("gateway-url", envOrDefault("RJ_GATEWAY_URL", "https://rj-gateway:443"), "rj-gateway MCP endpoint")
 	ironclawURL := flag.String("ironclaw-url", envOrDefault("IRONCLAW_URL", ""), "ironclaw adapter URL (same pod or K8s Service)")
-	picoclawURL := flag.String("picoclaw-url", envOrDefault("PICOCLAW_URL", ""), "picoclaw adapter URL (K8s Service)")
+	tinyclawURL := flag.String("tinyclaw-url", envOrDefault("TINYCLAW_URL", ""), "tinyclaw adapter URL (K8s Service)")
 	hexstrikeAIURL := flag.String("hexstrike-ai-url", envOrDefault("HEXSTRIKE_AI_URL", ""), "hexstrike-ai adapter URL (K8s Service)")
 	// Backward compat: --hexstrike-url is an alias for --hexstrike-ai-url.
 	hexstrikeURLAlias := flag.String("hexstrike-url", envOrDefault("HEXSTRIKE_URL", ""), "deprecated: use --hexstrike-ai-url")
@@ -54,7 +54,7 @@ func main() {
 		hsURL = *hexstrikeURLAlias
 	}
 
-	dispatcher := NewDispatcher(*gatewayURL, *ironclawURL, *picoclawURL, hsURL)
+	dispatcher := NewDispatcher(*gatewayURL, *ironclawURL, *tinyclawURL, hsURL)
 	collector := NewCollector(*gatewayURL)
 	scheduler := NewScheduler(registry, dispatcher, collector)
 
