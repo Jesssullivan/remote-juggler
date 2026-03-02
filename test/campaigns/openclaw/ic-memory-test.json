@@ -1,0 +1,50 @@
+{
+  "id": "ic-memory-test",
+  "name": "IronClaw Memory Loop (Phase 3)",
+  "description": "Phase 3: IronClaw reads a file, analyzes it, and writes a reflection to its persistent memory in Setec. On subsequent runs, the agent receives its previous notes and should demonstrate learning by building on them.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "You MUST use the exec tool to call rj-tool for EVERY operation. Do NOT guess or fabricate file contents.",
+    "STEP 1: Read the target file. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/resolver.go\"})",
+    "STEP 2: Analyze the file. Count the exported functions, identify any patterns (error handling, naming conventions, test coverage gaps). Be specific — cite line numbers or function names from the actual content you read.",
+    "STEP 3: Check your Notes from Previous Runs section (if present). Do NOT repeat observations you already made. Instead, build on them — go deeper, find new patterns, or verify whether previous observations still hold.",
+    "STEP 4: Write a reflection to your persistent memory. The reflection MUST include: (a) date and run context, (b) what you observed (with specific evidence from the file), (c) what you learned that you didn't know before, (d) rules for next time. Execute: exec({\"command\": \"/workspace/bin/rj-tool juggler_setec_put name=remotejuggler/agents/ironclaw/memory value=<YOUR_REFLECTION>\"})",
+    "STEP 5: Report a brief summary of what you did and what you wrote to memory."
+  ],
+  "tools": [
+    "github_fetch",
+    "juggler_setec_put",
+    "juggler_setec_get"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-memory-test"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent read a real file, wrote substantive memory to Setec, and on subsequent runs demonstrates learning by referencing previous notes.",
+    "kpis": [
+      "memory_bytes_written",
+      "references_to_previous_runs",
+      "new_observations_per_run"
+    ]
+  }
+}

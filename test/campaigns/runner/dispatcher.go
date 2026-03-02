@@ -51,14 +51,14 @@ func NewDispatcher(gatewayURL, ironclawURL, tinyclawURL, hexstrikeAIURL string) 
 //   - "tinyclaw"            → TinyClaw adapter (K8s Service)
 //   - "hexstrike-ai"/"hexstrike" → HexStrike-AI adapter (K8s Service)
 //   - "gateway-direct"/default → direct MCP tool calls via rj-gateway
-func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID string) (*DispatchResult, error) {
+func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID string, memoryContext string) (*DispatchResult, error) {
 	switch campaign.Agent {
 	case "ironclaw", "openclaw":
 		url := d.ironclawURL
 		if url == "" {
 			url = "http://localhost:8080" // adapter sidecar in same pod
 		}
-		return d.dispatchToAgent(ctx, campaign, runID, url)
+		return d.dispatchToAgent(ctx, campaign, runID, url, memoryContext)
 	case "tinyclaw":
 		if d.tinyclawURL == "" {
 			return &DispatchResult{Error: "tinyclaw agent URL not configured"}, nil
@@ -66,7 +66,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID str
 		if err := d.checkAgentHealth(ctx, d.tinyclawURL); err != nil {
 			return &DispatchResult{Error: fmt.Sprintf("tinyclaw agent unavailable: %v", err)}, nil
 		}
-		return d.dispatchToAgent(ctx, campaign, runID, d.tinyclawURL)
+		return d.dispatchToAgent(ctx, campaign, runID, d.tinyclawURL, memoryContext)
 	case "hexstrike-ai", "hexstrike":
 		if d.hexstrikeAIURL == "" {
 			return &DispatchResult{Error: "hexstrike-ai agent URL not configured"}, nil
@@ -74,7 +74,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, campaign *Campaign, runID str
 		if err := d.checkAgentHealth(ctx, d.hexstrikeAIURL); err != nil {
 			return &DispatchResult{Error: fmt.Sprintf("hexstrike-ai agent unavailable: %v", err)}, nil
 		}
-		return d.dispatchToAgent(ctx, campaign, runID, d.hexstrikeAIURL)
+		return d.dispatchToAgent(ctx, campaign, runID, d.hexstrikeAIURL, memoryContext)
 	default:
 		return d.dispatchDirect(ctx, campaign, runID)
 	}
@@ -99,10 +99,13 @@ func (d *Dispatcher) checkAgentHealth(ctx context.Context, agentURL string) erro
 
 // dispatchToAgent sends a campaign to an agent container for AI-powered execution.
 // The agent runs asynchronously; we poll for completion.
-func (d *Dispatcher) dispatchToAgent(ctx context.Context, campaign *Campaign, runID string, agentURL string) (*DispatchResult, error) {
+func (d *Dispatcher) dispatchToAgent(ctx context.Context, campaign *Campaign, runID string, agentURL string, memoryContext string) (*DispatchResult, error) {
 	payload := map[string]any{
 		"campaign": campaign,
 		"run_id":   runID,
+	}
+	if memoryContext != "" {
+		payload["memory_context"] = memoryContext
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

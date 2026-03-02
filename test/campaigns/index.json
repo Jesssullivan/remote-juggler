@@ -337,6 +337,12 @@
       "enabled": true,
       "lastRun": null,
       "lastResult": null
+    },
+    "ic-memory-test": {
+      "file": "openclaw/ic-memory-test.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
     }
   }
 }

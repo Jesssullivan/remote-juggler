@@ -104,6 +104,7 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		Outputs struct {
 			SetecKey string `json:"setecKey"`
 		} `json:"outputs"`
+		MemoryContext string `json:"_memory_context,omitempty"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
@@ -181,6 +182,14 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	// Output destination
 	if c.Outputs.SetecKey != "" {
 		pb.WriteString(fmt.Sprintf("## Output\nStore results via: `exec(\"/workspace/bin/rj-tool juggler_setec_put name=%s value=<JSON>\")`\n\n", c.Outputs.SetecKey))
+	}
+
+	// Persistent memory from previous runs (Reflexion pattern).
+	if c.MemoryContext != "" {
+		pb.WriteString("## Notes from Previous Runs\n")
+		pb.WriteString("The following are your notes from previous campaign runs. Use these to avoid repeating mistakes and build on what worked.\n\n")
+		pb.WriteString(c.MemoryContext)
+		pb.WriteString("\n\n")
 	}
 
 	pb.WriteString(findingsInstruction)

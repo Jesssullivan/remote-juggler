@@ -12,8 +12,9 @@ import (
 
 // CampaignRequest is the payload sent by the campaign runner to POST /campaign.
 type CampaignRequest struct {
-	Campaign json.RawMessage `json:"campaign"`
-	RunID    string          `json:"run_id"`
+	Campaign      json.RawMessage `json:"campaign"`
+	RunID         string          `json:"run_id"`
+	MemoryContext string          `json:"memory_context,omitempty"`
 }
 
 // CampaignResponse is returned by POST /campaign (202 Accepted).
@@ -135,6 +136,17 @@ func (a *Adapter) handleCampaign(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Inject memory context into campaign JSON so backends can read it.
+	if req.MemoryContext != "" {
+		var campaignMap map[string]any
+		if err := json.Unmarshal(req.Campaign, &campaignMap); err == nil {
+			campaignMap["_memory_context"] = req.MemoryContext
+			if merged, err := json.Marshal(campaignMap); err == nil {
+				req.Campaign = merged
+			}
+		}
 	}
 
 	a.mu.Lock()

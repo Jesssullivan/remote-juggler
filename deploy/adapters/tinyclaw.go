@@ -126,6 +126,7 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		Outputs struct {
 			SetecKey string `json:"setecKey"`
 		} `json:"outputs"`
+		MemoryContext string `json:"_memory_context,omitempty"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
@@ -184,6 +185,14 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	// Inject workspace skills as reference context.
 	pb.WriteString(b.loadSkills())
+
+	// Persistent memory from previous runs (Reflexion pattern).
+	if c.MemoryContext != "" {
+		pb.WriteString("\n\n## Notes from Previous Runs\n")
+		pb.WriteString("The following are your notes from previous campaign runs. Use these to avoid repeating mistakes and build on what worked.\n\n")
+		pb.WriteString(c.MemoryContext)
+		pb.WriteString("\n\n")
+	}
 
 	pb.WriteString(findingsInstruction)
 	prompt := pb.String()

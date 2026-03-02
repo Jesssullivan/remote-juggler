@@ -192,7 +192,18 @@ killSwitchCleared:
 		s.storeResult(ctx, campaign, result)
 		return fmt.Errorf("no dispatcher configured")
 	}
-	dispatchResult, err := s.dispatcher.Dispatch(ctx, campaign, runID)
+
+	// Pre-run: fetch agent's persistent memory for context injection.
+	var memoryContext string
+	if s.collector != nil {
+		memoryContext = s.collector.GetAgentMemory(ctx, campaign.Agent)
+		if memoryContext != "" {
+			log.Printf("campaign %s: loaded %d bytes of agent memory for %s",
+				campaign.ID, len(memoryContext), campaign.Agent)
+		}
+	}
+
+	dispatchResult, err := s.dispatcher.Dispatch(ctx, campaign, runID, memoryContext)
 	if err != nil {
 		result.Status = "error"
 		result.Error = err.Error()

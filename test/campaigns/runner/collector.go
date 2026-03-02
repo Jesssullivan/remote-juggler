@@ -119,3 +119,27 @@ func (c *Collector) ClearKillSwitch(ctx context.Context) error {
 	})
 	return err
 }
+
+// GetAgentMemory retrieves an agent's persistent memory from Setec.
+// Returns empty string if no memory exists or on any error.
+// Memory is stored at key: remotejuggler/agents/{agent}/memory
+func (c *Collector) GetAgentMemory(ctx context.Context, agent string) string {
+	key := fmt.Sprintf("remotejuggler/agents/%s/memory", agent)
+	resp, err := c.dispatcher.callTool(ctx, "juggler_setec_get", map[string]any{
+		"name": key,
+	})
+	if err != nil {
+		return ""
+	}
+
+	var mcpResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(resp, &mcpResult); err != nil || len(mcpResult.Content) == 0 {
+		return ""
+	}
+
+	return mcpResult.Content[0].Text
+}
