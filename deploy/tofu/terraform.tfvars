@@ -27,7 +27,7 @@ hexstrike_model = "claude-opus-4-20250514"
 # renovate: image
 gateway_image         = "ghcr.io/tinyland-inc/remote-juggler/gateway:sha-d4b161c"
 # renovate: image
-campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-fbbf9f3"
+campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-0e2bfb6"
 # renovate: image
 setec_image           = "ghcr.io/tinyland-inc/remote-juggler/setec:sha-d4b161c"
 # renovate: image
