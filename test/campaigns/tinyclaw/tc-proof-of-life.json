@@ -35,7 +35,7 @@
     "publishOnSuccess": false
   },
   "metrics": {
-    "successCriteria": "Agent called github_fetch (gateway audit log shows tool=github_fetch agent=tinyclaw), returned real file content, tool_calls >= 1.",
+    "successCriteria": "Agent called github_fetch (gateway audit log shows tool=github_fetch agent=tinyclaw), returned real file content, correctly identified function type (exported/private), tool_calls >= 1.",
     "kpis": [
       "tool_calls",
       "tokens_used"
