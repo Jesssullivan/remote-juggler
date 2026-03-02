@@ -35,6 +35,9 @@ prototype module remote_juggler {
   include module YubiKey;
   include module HSM;
   include module KeePassXC;
+  include module Manifest;
+  include module AgeEncryption;
+  include module GPGAgent;
   include module Tools;
   include module TrustedWorkstation;
   include module Setup;
@@ -58,6 +61,9 @@ prototype module remote_juggler {
   public use HSM;
   public use TrustedWorkstation;
   public use KeePassXC;
+  public use Manifest;
+  public use AgeEncryption;
+  public use GPGAgent;
 
   // ==========================================================================
   // ANSI Color/Formatting Helpers

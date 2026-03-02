@@ -534,7 +534,7 @@ prototype module Manifest {
       json += "      \"source_host\": \"" + entry.sourceHost + "\",\n";
       json += "      \"discovered_at\": \"" + entry.discoveredAt + "\",\n";
       json += "      \"content_hash\": \"" + entry.contentHash + "\",\n";
-      json += "      \"synced\": " + if entry.synced then "true" else "false" + ",\n";
+      json += "      \"synced\": " + (if entry.synced then "true" else "false") + ",\n";
       json += "      \"classification\": \"" + entry.classification + "\"\n";
       json += "    }";
     }
