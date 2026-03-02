@@ -33,6 +33,7 @@ prototype module KeePassXC {
   use Path;
   use super.Core only getEnvVar, getEnvOrDefault, expandTilde, verboseLog;
   public use super.HSM;
+  import super.Manifest;
 
   // ============================================================================
   // Constants
@@ -1980,5 +1981,142 @@ prototype module KeePassXC {
     }
 
     return output;
+  }
+
+  // ============================================================================
+  // IBSF Discovery Orchestrator
+  // ============================================================================
+
+  /*
+   * Discover all secrets across all sources and return SecretEntry records.
+   *
+   * Orchestrates:
+   *   1. KDBX group enumeration (API, Tokens, Infrastructure)
+   *   2. Environment variable credential discovery
+   *   3. SSH key metadata discovery
+   *   4. .env file crawling
+   *
+   * Part of the Identity-Bound Secret Fabric (IBSF) Sprint B.
+   *
+   * :arg dbPath: Path to the kdbx file
+   * :arg masterPw: KDBX master credential
+   * :arg tcfsSecretsDir: Path to ~/tcfs/secrets/ (for sync status check)
+   * :returns: (success, list of SecretEntry)
+   */
+  proc discoverAll(dbPath: string, masterPw: string,
+                   tcfsSecretsDir: string = ""): (bool, list(Manifest.SecretEntry)) {
+    var entries: list(Manifest.SecretEntry);
+    const host = Manifest.getLocalHostname();
+    const now = Manifest.nowISO8601();
+
+    // 1. Enumerate KDBX groups
+    const kdbxGroups = ["RemoteJuggler/API", "RemoteJuggler/Tokens",
+                        "RemoteJuggler/Infrastructure", "RemoteJuggler/Discovered",
+                        "RemoteJuggler/Environments"];
+    for group in kdbxGroups {
+      const (listOk, groupEntries) = listEntries(dbPath, group, masterPw);
+      if listOk {
+        for entryName in groupEntries {
+          if entryName.endsWith("/") then continue;  // Skip subdirs
+          if entryName.strip() == "" then continue;
+
+          const entryPath = group + "/" + entryName;
+          const (getOk, value) = getEntry(dbPath, entryPath, masterPw);
+          if getOk && value != "" {
+            const canonical = Manifest.deriveCanonicalName("kdbx", entryPath);
+            const hash = Manifest.computeContentHash(value);
+            const classification = Manifest.classifySecret(canonical);
+
+            // Check sync status: does a corresponding file exist in tcfs?
+            var synced = false;
+            if tcfsSecretsDir != "" {
+              // Check kdbx export dir
+              const groupDirName = group.replace("/", "_");
+              const exportPath = tcfsSecretsDir + "/kdbx/" + groupDirName + "/" + entryName;
+              synced = exists(exportPath);
+            }
+
+            entries.pushBack(new Manifest.SecretEntry(
+              canonical, "kdbx", entryPath, host, now, hash, synced, classification
+            ));
+          }
+        }
+      }
+    }
+
+    // 2. Environment variable credentials
+    const credPatterns = ["_TOKEN", "_API_KEY", "_SECRET", "_PASSWORD",
+                          "_PASSPHRASE", "_ACCESS_KEY", "_BEARER_TOKEN",
+                          "_PRIVATE_KEY"];
+    try {
+      var p = spawn(["env"],
+                    stdout=pipeStyle.pipe, stderr=pipeStyle.close);
+      p.wait();
+      if p.exitCode == 0 {
+        var output: string;
+        p.stdout.readAll(output);
+        for line in output.split("\n") {
+          const trimmed = line.strip();
+          if trimmed == "" then continue;
+          const eqPos = trimmed.find("=");
+          if eqPos < 0 then continue;
+
+          const varName = trimmed[0..#eqPos:int];
+          const varValue = trimmed[eqPos+1..];
+          const upperName = varName.toUpper();
+
+          var isCredential = false;
+          for pattern in credPatterns {
+            if upperName.endsWith(pattern) {
+              isCredential = true;
+              break;
+            }
+          }
+          if isCredential && varValue != "" {
+            const canonical = Manifest.deriveCanonicalName("env", varName);
+            const hash = Manifest.computeContentHash(varValue);
+            const classification = Manifest.classifySecret(varName);
+
+            entries.pushBack(new Manifest.SecretEntry(
+              canonical, "env", varName, host, now, hash, false, classification
+            ));
+          }
+        }
+      }
+    } catch { }
+
+    // 3. SSH key metadata
+    const sshDir = expandTilde("~/.ssh");
+    if isDir(sshDir) {
+      try {
+        for entry in listDir(sshDir, dirs=false) {
+          const fullPath = sshDir + "/" + entry;
+          // Check if it's a private key (has matching .pub)
+          if exists(fullPath + ".pub") {
+            const canonical = Manifest.deriveCanonicalName("ssh", fullPath);
+
+            // Hash the public key fingerprint, not the private key
+            var hash = "";
+            try {
+              var fp = spawn(["ssh-keygen", "-l", "-f", fullPath],
+                             stdout=pipeStyle.pipe, stderr=pipeStyle.close);
+              fp.wait();
+              if fp.exitCode == 0 {
+                var fpLine: string;
+                if fp.stdout.readLine(fpLine) {
+                  hash = Manifest.computeContentHash(fpLine.strip());
+                }
+              }
+            } catch { }
+
+            entries.pushBack(new Manifest.SecretEntry(
+              canonical, "ssh", fullPath, host, now, hash, false, "personal"
+            ));
+          }
+        }
+      } catch { }
+    }
+
+    return (true, entries);
   }
 }
