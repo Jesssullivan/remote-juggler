@@ -1370,20 +1370,4 @@ prototype module Manifest {
     return removed;
   }
 
-  /*
-   * Helper: get environment variable value.
-   */
-  private proc getEnvVar(name: string): string {
-    try {
-      var p = spawn(["printenv", name],
-                    stdout=pipeStyle.pipe, stderr=pipeStyle.close);
-      p.wait();
-      if p.exitCode == 0 {
-        var output: string;
-        p.stdout.readAll(output);
-        return output.strip();
-      }
-    } catch { }
-    return "";
-  }
 }
