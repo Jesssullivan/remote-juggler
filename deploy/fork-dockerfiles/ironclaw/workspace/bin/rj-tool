@@ -109,23 +109,22 @@ else
   done
   ARGS="${ARGS}}"
 
-  # If --content-file was given, read the file and inject "content" field.
+  # If --content-file was given, merge file content into ARGS JSON.
+  # IMPORTANT: Use node/python for the merge — sed corrupts JSON escape
+  # sequences (\n becomes newline, \" becomes bare quote).
   if [ -n "$CONTENT_FILE" ]; then
     if [ ! -f "$CONTENT_FILE" ]; then
       echo "ERROR: Content file not found: $CONTENT_FILE" >&2
       exit 1
     fi
-    # Read file, JSON-escape it using node/python/sed.
     if command -v node >/dev/null 2>&1; then
-      ESCAPED_CONTENT=$(node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync('$CONTENT_FILE','utf8')))")
+      ARGS=$(node -e "const a=JSON.parse(process.argv[1]); a.content=require('fs').readFileSync(process.argv[2],'utf8'); process.stdout.write(JSON.stringify(a))" "$ARGS" "$CONTENT_FILE")
     elif command -v python3 >/dev/null 2>&1; then
-      ESCAPED_CONTENT=$(python3 -c "import json,sys; print(json.dumps(open('$CONTENT_FILE').read()),end='')")
+      ARGS=$(python3 -c "import json,sys; a=json.loads(sys.argv[1]); a['content']=open(sys.argv[2]).read(); print(json.dumps(a),end='')" "$ARGS" "$CONTENT_FILE")
     else
-      # Fallback: basic sed escaping (may miss edge cases).
-      ESCAPED_CONTENT=$(printf '"%s"' "$(cat "$CONTENT_FILE" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' '\a' | sed 's/\a/\\n/g')")
+      echo "ERROR: --content-file requires node or python3" >&2
+      exit 1
     fi
-    # Inject content field into ARGS JSON.
-    ARGS=$(printf '%s' "$ARGS" | sed "s/}$/,\"content\":${ESCAPED_CONTENT}}/")
   fi
 fi
 
