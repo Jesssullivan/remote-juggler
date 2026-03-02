@@ -8,19 +8,20 @@
     "event": "manual"
   },
   "process": [
-    "Read your performance history from Setec key 'remotejuggler/campaigns/tc-proof-of-life/history'",
-    "Analyze trends: success rate, tool call efficiency, duration",
-    "Identify ONE specific improvement to the tc-proof-of-life campaign",
-    "Fetch the current campaign JSON from github (test/campaigns/tinyclaw/tc-proof-of-life.json)",
-    "Create a branch, patch the campaign JSON with your improvement, create a PR",
-    "Report your proposed change and expected improvement in __findings__",
-    "Write a __memory__ reflection about what you changed and why"
+    "Step 1: Call juggler_setec_get with name='remotejuggler/campaigns/tc-proof-of-life/history' to read your performance history (JSON array of past runs with status, tool_calls, duration_s)",
+    "Step 2: Analyze the history — look at success rate, average tool calls, average duration. Identify ONE weakness or improvement opportunity",
+    "Step 3: Call github_fetch to read the current campaign JSON at path=test/campaigns/tinyclaw/tc-proof-of-life.json from owner=tinyland-inc repo=remote-juggler",
+    "Step 4: Decide on a specific improvement to the campaign (e.g., add a process step, adjust description, add a tool). Create a modified version of the JSON",
+    "Step 5: Call github_patch_file ONCE to write the modified campaign JSON to a new branch. Use branch=tc-self-improve-patch, path=test/campaigns/tinyclaw/tc-proof-of-life.json, message='chore: improve tc-proof-of-life campaign'",
+    "Step 6: Call github_create_pr with head=tc-self-improve-patch, base=main, title='chore: agent self-improvement of tc-proof-of-life', body describing what you changed and why",
+    "Step 7: Report your change and reasoning in __findings__. Write a __memory__ reflection about what you changed"
   ],
   "tools": [
     "juggler_setec_get",
     "github_fetch",
     "github_patch_file",
-    "github_create_pr"
+    "github_create_pr",
+    "github_create_branch"
   ],
   "targets": [
     {
