@@ -226,7 +226,7 @@ prototype module GPGAgent {
         // Parse key-value pair
         // Format: key [value]
         const stripped = line.strip();
-        const spaceIdx = stripped.find(" ");
+        const spaceIdx = stripped.find(" "):int;
 
         if spaceIdx == -1 {
           // Key only (boolean flag)

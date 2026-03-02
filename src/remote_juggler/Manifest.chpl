@@ -374,7 +374,7 @@ prototype module Manifest {
         }
 
         // Key = value parsing
-        const eqIdx = trimmed.find("=");
+        const eqIdx = trimmed.find("="):int;
         if eqIdx == -1 then continue;
 
         const key = trimmed[0..eqIdx-1].strip();
@@ -1188,7 +1188,7 @@ prototype module Manifest {
 
         if !inEntry then continue;
 
-        const eqIdx = trimmed.find("=");
+        const eqIdx = trimmed.find("="):int;
         if eqIdx == -1 then continue;
 
         const key = trimmed[0..eqIdx-1].strip();
