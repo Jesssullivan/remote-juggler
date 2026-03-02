@@ -33,11 +33,11 @@ setec_image           = "ghcr.io/tinyland-inc/remote-juggler/setec:sha-d4b161c"
 # renovate: image
 chapel_binary_image   = "ghcr.io/tinyland-inc/remote-juggler:sha-d4b161c"
 # renovate: image
-adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-fbbf9f3"
+adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-45cb22e"
 
 # Agent images (from individual repos)
 # renovate: image
-ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-ec60faa"
+ironclaw_image     = "ghcr.io/tinyland-inc/ironclaw:sha-8ff79a1"
 # renovate: image
 tinyclaw_image     = "ghcr.io/tinyland-inc/tinyclaw:sha-c5c0a85"
 # renovate: image
