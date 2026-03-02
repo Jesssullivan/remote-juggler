@@ -4,25 +4,25 @@
   "campaigns": {
     "cc-mcp-regression": {
       "file": "gateway-direct/cc-mcp-regression.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "cc-identity-switch": {
       "file": "gateway-direct/cc-identity-switch.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "cc-config-sync": {
       "file": "gateway-direct/cc-config-sync.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "cc-cred-resolution": {
       "file": "gateway-direct/cc-cred-resolution.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
@@ -34,265 +34,265 @@
     },
     "cc-cron-monitor": {
       "file": "gateway-direct/cc-cron-monitor.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "cc-stale-issues": {
       "file": "gateway-direct/cc-stale-issues.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-gateway-smoketest": {
       "file": "openclaw/oc-gateway-smoketest.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-dep-audit": {
       "file": "openclaw/oc-dep-audit.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-coverage-gaps": {
       "file": "openclaw/oc-coverage-gaps.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-docs-freshness": {
       "file": "openclaw/oc-docs-freshness.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-license-scan": {
       "file": "openclaw/oc-license-scan.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-dead-code": {
       "file": "openclaw/oc-dead-code.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-ts-strict": {
       "file": "openclaw/oc-ts-strict.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-a11y-check": {
       "file": "openclaw/oc-a11y-check.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-weekly-digest": {
       "file": "openclaw/oc-weekly-digest.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-issue-triage": {
       "file": "openclaw/oc-issue-triage.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-prompt-audit": {
       "file": "openclaw/oc-prompt-audit.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-cred-exposure": {
       "file": "hexstrike/hs-cred-exposure.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-dep-vuln": {
       "file": "hexstrike/hs-dep-vuln.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-cve-monitor": {
       "file": "hexstrike/hs-cve-monitor.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-network-posture": {
       "file": "hexstrike/hs-network-posture.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-gateway-pentest": {
       "file": "hexstrike/hs-gateway-pentest.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-sops-rotation": {
       "file": "hexstrike/hs-sops-rotation.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-container-vuln": {
       "file": "hexstrike/hs-container-vuln.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-codeql-fix": {
       "file": "openclaw/oc-codeql-fix.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-wiki-update": {
       "file": "openclaw/oc-wiki-update.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-audit-completeness": {
       "file": "cross-agent/xa-audit-completeness.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-cred-lifecycle": {
       "file": "cross-agent/xa-cred-lifecycle.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-acl-enforcement": {
       "file": "cross-agent/xa-acl-enforcement.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-upstream-sync": {
       "file": "openclaw/oc-upstream-sync.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-self-evolve": {
       "file": "openclaw/oc-self-evolve.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-fork-review": {
       "file": "openclaw/oc-fork-review.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "pc-upstream-sync": {
       "file": "tinyclaw/pc-upstream-sync.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "pc-self-evolve": {
       "file": "tinyclaw/pc-self-evolve.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-fork-health": {
       "file": "cross-agent/xa-fork-health.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-identity-audit": {
       "file": "openclaw/oc-identity-audit.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-credential-health": {
       "file": "openclaw/oc-credential-health.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-secret-request": {
       "file": "openclaw/oc-secret-request.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-token-budget": {
       "file": "openclaw/oc-token-budget.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-ts-package-audit": {
       "file": "openclaw/oc-ts-package-audit.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-infra-review": {
       "file": "openclaw/oc-infra-review.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-identity-audit": {
       "file": "cross-agent/xa-identity-audit.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-platform-health": {
       "file": "cross-agent/xa-platform-health.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-token-budget": {
       "file": "cross-agent/xa-token-budget.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-upstream-drift": {
       "file": "cross-agent/xa-upstream-drift.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "xa-finding-handoff": {
       "file": "cross-agent/xa-finding-handoff.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "hs-handoff-response": {
       "file": "hexstrike/hs-handoff-response.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "oc-handoff-response": {
       "file": "openclaw/oc-handoff-response.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
@@ -304,18 +304,24 @@
     },
     "pc-ts-package-scan": {
       "file": "tinyclaw/pc-ts-package-scan.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "pc-credential-health": {
       "file": "tinyclaw/pc-credential-health.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
     "pc-identity-audit": {
       "file": "tinyclaw/pc-identity-audit.json",
+      "enabled": false,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "ic-proof-of-life": {
+      "file": "openclaw/ic-proof-of-life.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null

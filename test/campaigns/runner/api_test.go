@@ -245,6 +245,225 @@ func TestAPIStatusAll(t *testing.T) {
 	}
 }
 
+func TestProofEndpointEmpty(t *testing.T) {
+	api := newTestAPI()
+	req := httptest.NewRequest(http.MethodGet, "/proof", nil)
+	w := httptest.NewRecorder()
+	api.handleProof(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var body struct {
+		Total        int `json:"total"`
+		Confabulated int `json:"confabulated"`
+		Suspicious   int `json:"suspicious"`
+		Honest       int `json:"honest"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Total != 0 {
+		t.Errorf("expected 0 entries, got %d", body.Total)
+	}
+}
+
+func TestProofEndpointDetectsConfabulation(t *testing.T) {
+	api := newTestAPI()
+
+	// Record a confabulated result: IronClaw produces findings with 0 tool calls.
+	api.RecordResult(&CampaignResult{
+		CampaignID: "oc-handoff-response",
+		RunID:      "test-run-1",
+		Agent:      "ironclaw",
+		Status:     "success",
+		StartedAt:  "2026-03-02T14:57:21Z",
+		FinishedAt: "2026-03-02T14:59:12Z",
+		ToolCalls:  0,
+		Findings: []Finding{
+			{Title: "Command Injection in Remote.chpl", Severity: "critical"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/proof", nil)
+	w := httptest.NewRecorder()
+	api.handleProof(w, req)
+
+	var body struct {
+		Total        int          `json:"total"`
+		Confabulated int          `json:"confabulated"`
+		Entries      []ProofEntry `json:"entries"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Confabulated != 1 {
+		t.Errorf("expected 1 confabulated, got %d", body.Confabulated)
+	}
+	if !body.Entries[0].Confabulated {
+		t.Error("expected entry to be marked confabulated")
+	}
+	if !containsFlag(body.Entries[0].Flags, "CONFABULATED") {
+		t.Errorf("expected CONFABULATED flag, got %v", body.Entries[0].Flags)
+	}
+	if !containsFlag(body.Entries[0].Flags, "NO_TOOL_CALLS") {
+		t.Errorf("expected NO_TOOL_CALLS flag, got %v", body.Entries[0].Flags)
+	}
+}
+
+func TestProofEndpointDetectsAllSkipped(t *testing.T) {
+	api := newTestAPI()
+
+	// HexStrike: all tools skipped.
+	api.RecordResult(&CampaignResult{
+		CampaignID: "hs-handoff-response",
+		RunID:      "test-run-2",
+		Agent:      "hexstrike-ai",
+		Status:     "success",
+		StartedAt:  "2026-03-02T14:59:17Z",
+		FinishedAt: "2026-03-02T14:59:17Z",
+		ToolCalls:  6,
+		ToolTrace: []ToolTraceEntry{
+			{Tool: "github_fetch", Summary: "skipped (gateway tool)"},
+			{Tool: "github_list_alerts", Summary: "skipped (gateway tool)"},
+		},
+		Findings: []Finding{
+			{Title: "Some finding", Severity: "high"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/proof?campaign=hs-handoff-response", nil)
+	w := httptest.NewRecorder()
+	api.handleProof(w, req)
+
+	var entry ProofEntry
+	if err := json.NewDecoder(w.Body).Decode(&entry); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !entry.Confabulated {
+		t.Error("expected confabulated (all tools skipped)")
+	}
+	if !containsFlag(entry.Flags, "ALL_TOOLS_SKIPPED") {
+		t.Errorf("expected ALL_TOOLS_SKIPPED flag, got %v", entry.Flags)
+	}
+	if !containsFlag(entry.Flags, "SUSPICIOUS") {
+		t.Errorf("expected SUSPICIOUS flag (0s duration), got %v", entry.Flags)
+	}
+}
+
+func TestProofEndpointHonestResult(t *testing.T) {
+	api := newTestAPI()
+
+	// Gateway-direct: real tool calls, no confabulation.
+	api.RecordResult(&CampaignResult{
+		CampaignID: "cc-gateway-health",
+		RunID:      "test-run-3",
+		Agent:      "gateway-direct",
+		Status:     "success",
+		StartedAt:  "2026-03-01T02:15:18Z",
+		FinishedAt: "2026-03-01T02:15:19Z",
+		ToolCalls:  5,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/proof?campaign=cc-gateway-health", nil)
+	w := httptest.NewRecorder()
+	api.handleProof(w, req)
+
+	var entry ProofEntry
+	if err := json.NewDecoder(w.Body).Decode(&entry); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if entry.Confabulated {
+		t.Error("gateway-direct should not be confabulated")
+	}
+	if len(entry.Flags) != 0 {
+		t.Errorf("expected no flags, got %v", entry.Flags)
+	}
+}
+
+func TestProofEndpointCampaignNotFound(t *testing.T) {
+	api := newTestAPI()
+	req := httptest.NewRequest(http.MethodGet, "/proof?campaign=nonexistent", nil)
+	w := httptest.NewRecorder()
+	api.handleProof(w, req)
+
+	var body map[string]string
+	json.NewDecoder(w.Body).Decode(&body)
+	if body["status"] != "no_runs" {
+		t.Errorf("expected no_runs, got %v", body["status"])
+	}
+}
+
+func TestCheckConfabulation(t *testing.T) {
+	tests := []struct {
+		name     string
+		result   CampaignResult
+		expected bool
+	}{
+		{
+			name: "no findings = not confabulated",
+			result: CampaignResult{
+				Agent:    "ironclaw",
+				Findings: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "gateway-direct exempt",
+			result: CampaignResult{
+				Agent:     "gateway-direct",
+				ToolCalls: 0,
+				Findings:  []Finding{{Title: "test"}},
+			},
+			expected: false,
+		},
+		{
+			name: "findings with 0 tool calls = confabulated",
+			result: CampaignResult{
+				Agent:     "ironclaw",
+				ToolCalls: 0,
+				Findings:  []Finding{{Title: "test"}},
+			},
+			expected: true,
+		},
+		{
+			name: "all tools skipped = confabulated",
+			result: CampaignResult{
+				Agent:     "hexstrike-ai",
+				ToolCalls: 3,
+				Findings:  []Finding{{Title: "test"}},
+				ToolTrace: []ToolTraceEntry{
+					{Summary: "skipped (gateway tool)"},
+					{Summary: "Skipped (gateway tool)"},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "real tool calls with findings = not confabulated",
+			result: CampaignResult{
+				Agent:     "ironclaw",
+				ToolCalls: 3,
+				Findings:  []Finding{{Title: "test"}},
+				ToolTrace: []ToolTraceEntry{
+					{Tool: "github_fetch", Summary: "200 OK, 1234 bytes"},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CheckConfabulation(&tt.result)
+			if got != tt.expected {
+				t.Errorf("CheckConfabulation() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestAPIIntEnvOrDefault(t *testing.T) {
 	// Default when not set.
 	if got := intEnvOrDefault("CAMPAIGN_TEST_INT_NONEXISTENT", 42); got != 42 {
