@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // APIServer provides HTTP endpoints for campaign management.
@@ -45,6 +46,7 @@ func (a *APIServer) ListenAndServe(addr string) error {
 	mux.HandleFunc("/status", a.handleStatus)
 	mux.HandleFunc("/campaigns", a.handleCampaigns)
 	mux.HandleFunc("/webhook", a.handleWebhook)
+	mux.HandleFunc("/proof", a.handleProof)
 
 	log.Printf("api server listening on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -301,6 +303,187 @@ func pathFiltersMatch(filters []string, changedFiles []string) bool {
 			}
 		}
 	}
+	return false
+}
+
+// ProofEntry is the raw evidence for a single campaign result.
+// Designed to be unforgeable: flags suspicious patterns that indicate
+// confabulated results rather than real tool-backed work.
+type ProofEntry struct {
+	CampaignID   string           `json:"campaign_id"`
+	RunID        string           `json:"run_id"`
+	Agent        string           `json:"agent"`
+	Status       string           `json:"status"`
+	StartedAt    string           `json:"started_at"`
+	FinishedAt   string           `json:"finished_at"`
+	DurationSec  float64          `json:"duration_sec"`
+	ToolCalls    int              `json:"tool_calls"`
+	FindingCount int              `json:"finding_count"`
+	ToolTrace    []ToolTraceEntry `json:"tool_trace,omitempty"`
+	Flags        []string         `json:"flags,omitempty"`
+	Confabulated bool             `json:"confabulated"`
+	Error        string           `json:"error,omitempty"`
+}
+
+// handleProof returns raw, unforgeable evidence for campaign results.
+// GET /proof — returns all results with integrity flags.
+// GET /proof?campaign=ID — returns a single campaign's proof.
+//
+// Flags:
+//   - SUSPICIOUS: duration < 1s with tool_calls > 0 (instant completion is fake)
+//   - CONFABULATED: findings exist but tool_trace is empty or all "skipped"
+//   - NO_TOOL_CALLS: agent campaign with 0 tool calls (LLM ran but didn't use tools)
+//   - ALL_TOOLS_SKIPPED: every tool trace entry says "skipped"
+func (a *APIServer) handleProof(w http.ResponseWriter, r *http.Request) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	campaignID := r.URL.Query().Get("campaign")
+	w.Header().Set("Content-Type", "application/json")
+
+	if campaignID != "" {
+		result, ok := a.lastResults[campaignID]
+		if !ok {
+			json.NewEncoder(w).Encode(map[string]string{
+				"campaign_id": campaignID,
+				"status":      "no_runs",
+			})
+			return
+		}
+		json.NewEncoder(w).Encode(buildProofEntry(result))
+		return
+	}
+
+	// All results.
+	entries := make([]ProofEntry, 0, len(a.lastResults))
+	confabulated := 0
+	suspicious := 0
+	for _, result := range a.lastResults {
+		entry := buildProofEntry(result)
+		if entry.Confabulated {
+			confabulated++
+		}
+		if containsFlag(entry.Flags, "SUSPICIOUS") {
+			suspicious++
+		}
+		entries = append(entries, entry)
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"entries":      entries,
+		"total":        len(entries),
+		"confabulated": confabulated,
+		"suspicious":   suspicious,
+		"honest":       len(entries) - confabulated - suspicious,
+	})
+}
+
+// buildProofEntry analyzes a CampaignResult and flags integrity issues.
+func buildProofEntry(r *CampaignResult) ProofEntry {
+	entry := ProofEntry{
+		CampaignID:   r.CampaignID,
+		RunID:        r.RunID,
+		Agent:        r.Agent,
+		Status:       r.Status,
+		StartedAt:    r.StartedAt,
+		FinishedAt:   r.FinishedAt,
+		ToolCalls:    r.ToolCalls,
+		FindingCount: len(r.Findings),
+		Error:        r.Error,
+	}
+
+	// Convert tool trace.
+	entry.ToolTrace = r.ToolTrace
+
+	// Calculate duration.
+	if r.StartedAt != "" && r.FinishedAt != "" {
+		start, err1 := time.Parse(time.RFC3339, r.StartedAt)
+		end, err2 := time.Parse(time.RFC3339, r.FinishedAt)
+		if err1 == nil && err2 == nil {
+			entry.DurationSec = end.Sub(start).Seconds()
+		}
+	}
+
+	// Flag: SUSPICIOUS — instant completion with claimed tool calls.
+	if entry.DurationSec < 1.0 && entry.DurationSec >= 0 && r.ToolCalls > 0 {
+		entry.Flags = append(entry.Flags, "SUSPICIOUS")
+	}
+
+	// Flag: NO_TOOL_CALLS — agent-based campaign with 0 tool calls.
+	// Gateway-direct campaigns are expected to have tool calls from the dispatcher.
+	if r.Agent != "gateway-direct" && r.Agent != "" && r.ToolCalls == 0 && r.Status == "success" {
+		entry.Flags = append(entry.Flags, "NO_TOOL_CALLS")
+	}
+
+	// Flag: ALL_TOOLS_SKIPPED — every tool trace entry is "skipped".
+	if len(r.ToolTrace) > 0 {
+		allSkipped := true
+		for _, t := range r.ToolTrace {
+			if !strings.Contains(strings.ToLower(t.Summary), "skipped") {
+				allSkipped = false
+				break
+			}
+		}
+		if allSkipped {
+			entry.Flags = append(entry.Flags, "ALL_TOOLS_SKIPPED")
+		}
+	}
+
+	// Confabulation check: findings exist but no tool evidence.
+	entry.Confabulated = CheckConfabulation(r)
+	if entry.Confabulated {
+		entry.Flags = append(entry.Flags, "CONFABULATED")
+	}
+
+	return entry
+}
+
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// CheckConfabulation returns true if a campaign result contains findings
+// that are not backed by tool evidence. A finding about file X is confabulated
+// unless the tool trace shows a tool call that accessed that file.
+//
+// Rules:
+//   - Findings with 0 tool calls from an agent = CONFABULATED
+//   - Findings where all tool trace entries are "skipped" = CONFABULATED
+//   - Gateway-direct campaigns are exempt (tools called by dispatcher, not agent)
+func CheckConfabulation(r *CampaignResult) bool {
+	if len(r.Findings) == 0 {
+		return false // No findings = nothing to confabulate.
+	}
+
+	// Gateway-direct campaigns call tools via the dispatcher, not the agent.
+	if r.Agent == "gateway-direct" {
+		return false
+	}
+
+	// No tool calls but has findings = confabulated.
+	if r.ToolCalls == 0 {
+		return true
+	}
+
+	// All tools skipped = confabulated.
+	if len(r.ToolTrace) > 0 {
+		allSkipped := true
+		for _, t := range r.ToolTrace {
+			if !strings.Contains(strings.ToLower(t.Summary), "skipped") {
+				allSkipped = false
+				break
+			}
+		}
+		if allSkipped {
+			return true
+		}
+	}
+
 	return false
 }
 

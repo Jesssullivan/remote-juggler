@@ -1,0 +1,47 @@
+{
+  "id": "ic-proof-of-life",
+  "name": "IronClaw Proof of Life",
+  "description": "Verifies that IronClaw can execute a gateway tool via rj-tool and return real output. This is the simplest possible test: read a file and report its contents. Findings without tool evidence are automatically rejected.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "You MUST use the exec tool to call rj-tool. Do NOT guess or fabricate file contents.",
+    "Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/main.go\"})",
+    "Read the output from the tool call. It will contain the file contents.",
+    "Report the first 5 lines of the file content exactly as returned by the tool.",
+    "Count the total number of 'func ' declarations in the file.",
+    "Report your findings with the exact line count and first 5 lines as evidence."
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-proof-of-life"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent returned actual file content from github_fetch tool call, verifiable against gateway audit log",
+    "kpis": [
+      "tool_calls_verified",
+      "content_matches_source"
+    ]
+  }
+}
