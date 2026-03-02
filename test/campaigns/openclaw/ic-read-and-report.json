@@ -1,0 +1,50 @@
+{
+  "id": "ic-read-and-report",
+  "name": "IronClaw Read and Report (Multi-Tool)",
+  "description": "Validates that IronClaw can sequence multiple rj-tool calls and synthesize findings from real file contents. The agent must read two files via github_fetch, extract specific data from each, and report exact counts with evidence. This is Phase 1 Step 2: the bridge between proof-of-life (1 tool call) and the full edit-test loop. Any finding not backed by tool output is automatically rejected.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "You MUST use the exec tool to call rj-tool for EVERY file you need to read. Do NOT guess or fabricate file contents. Do NOT rely on memory or training data. Every claim you make must come from tool output.",
+    "STEP 1: Read resolver.go. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/resolver.go\"})",
+    "STEP 2: From the tool output of resolver.go, identify all exported functions. An exported function in Go starts with a capital letter after 'func ' (e.g., 'func ResolveTool' is exported, 'func resolveTool' is not). List every exported function name you find. Count them exactly.",
+    "STEP 3: Read tools.go. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/tools.go\"})",
+    "STEP 4: From the tool output of tools.go, count the total number of registered MCP tools. Look for tool registration patterns (e.g., entries in a tools map, RegisterTool calls, or tool definition structs). Report the exact count.",
+    "STEP 5: Compile your report. It MUST include: (a) the exact number of exported functions in resolver.go with each function name listed, (b) the exact number of registered MCP tools in tools.go, (c) a brief one-sentence summary of what each file does based on what you read. Do NOT add any information that did not come from the two tool calls above."
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-read-and-report"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent made 2+ verified github_fetch tool calls (resolver.go and tools.go), reported exact counts that match source, and no content was fabricated (cross-referenced with gateway audit log)",
+    "kpis": [
+      "tool_calls_verified",
+      "multi_tool_sequencing",
+      "content_matches_source",
+      "exported_function_count_accuracy",
+      "registered_tool_count_accuracy"
+    ]
+  }
+}
