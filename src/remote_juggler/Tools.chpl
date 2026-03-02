@@ -1153,13 +1153,13 @@ prototype module Tools {
    * :returns: JSON-safe escaped string (without surrounding quotes)
    */
   proc escapeJsonString(s: string): string {
-    var out = s;
-    out = out.replace("\\", "\\\\");
-    out = out.replace("\"", "\\\"");
-    out = out.replace("\n", "\\n");
-    out = out.replace("\r", "\\r");
-    out = out.replace("\t", "\\t");
-    return out;
+    var escaped = s;
+    escaped = escaped.replace("\\", "\\\\");
+    escaped = escaped.replace("\"", "\\\"");
+    escaped = escaped.replace("\n", "\\n");
+    escaped = escaped.replace("\r", "\\r");
+    escaped = escaped.replace("\t", "\\t");
+    return escaped;
   }
 
   /*
