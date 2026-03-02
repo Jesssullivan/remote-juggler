@@ -199,20 +199,23 @@ kubectl exec deploy/ironclaw-agent -c campaign-runner -- wget -qO- 'http://local
 
 ---
 
-### Phase 2: Read-Edit-Test Loop (Days 6-12) -- IN PROGRESS 2026-03-02
+### Phase 2: Read-Edit-Test Loop (Days 6-12) -- GO 2026-03-02
 
-**First attempt** (ic-edit-test-1772476570):
-- IronClaw created branch `ic-add-identity-tests` and PR #327 via OpenClaw internal tools
-- BUT: test file was malformed (single `-` char) due to shell escaping failure
-- rj-tool passes Go code as shell args, backticks/quotes/newlines break
-- CI correctly failed: Build gateway, Gateway Tests both red
-- Adapter reported tools=0 (OpenClaw internal calls invisible to adapter)
-- /proof correctly flagged as CONFABULATED (tools=0 from adapter's perspective)
+**Evidence**: PR #340 (ic-edit-test-1772479412)
+- IronClaw read identity.go via github_fetch, analyzed parseCapabilities/HasCapability
+- Wrote 131-line test file (gateway/identity_test.go) with table-driven tests
+- Created branch `ic-add-identity-tests`, pushed file, created PR #340
+- **Gateway Tests: PASS** — `go test ./...` green on the new test file
+- 7 parseCapabilities cases + 6 HasCapability cases, all passing
+- Duration: 1m18s, real LLM call + real tool calls via OpenClaw internal loop
 
-**Diagnosis**: The rj-tool shell wrapper cannot pass multi-line code content.
-`github_update_file content=<go code>` breaks when code contains special chars.
-Need either: (a) base64 encoding, (b) file-based input, or (c) a template approach
-where agent picks a template and fills parameters instead of writing raw code.
+**Bugs Fixed Along the Way**:
+1. Attempt 1 (PR #327): Shell escaping broke multi-line Go code → file was just `-`
+2. Fix: Added `--content-file` and `--json` modes to rj-tool
+3. Attempt 2: rj-tool sed injection corrupted JSON (`\n`→newline, `\"`→bare quote)
+4. Fix: Replaced sed with node/python JSON merge
+5. Attempt 3: OpenClaw not ready (2ms connection refused, pod still starting)
+6. Attempt 4: SUCCESS — PR #340 with passing CI
 
 **Goal**: IronClaw reads a file, makes a change, and the change passes CI.
 

@@ -186,6 +186,13 @@
           },
           "description": "Branch name patterns the campaign may create (requires readOnly=false)"
         },
+        "allowedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File path patterns the campaign may create or modify (requires readOnly=false)"
+        },
         "requireApproval": {
           "type": "boolean",
           "default": false,
