@@ -82,7 +82,17 @@ boundary is defined by what tests exist to verify its output. No tests = no auto
 
 ## 6-Phase Sprint
 
-### Phase 0: Honest Baseline (Day 1)
+### Phase 0: Honest Baseline (Day 1) -- COMPLETED 2026-03-02
+
+**Status**: DONE. /proof endpoint deployed, confabulation detection active, 51 campaigns disabled.
+
+**Results**:
+- `/proof` endpoint live at `sha-fbbf9f3` with `ProofEntry` struct and `CheckConfabulation()`
+- 6 new tests (115 total campaign runner tests, all pass)
+- `ic-proof-of-life` campaign created with explicit tool-forcing prompt
+- 51 theatrical campaigns disabled, only `cc-gateway-health` + `ic-proof-of-life` enabled
+- Actual tool chains documented in `agent_plane/tool-chains.md`
+
 **Goal**: Establish ground truth metrics that cannot be gamed.
 
 **Actions**:
@@ -114,7 +124,21 @@ the foundations?
 
 ---
 
-### Phase 1: One Agent, One Real Tool Call (Days 2-5)
+### Phase 1: One Agent, One Real Tool Call (Days 2-5) -- GO 2026-03-02
+
+**Status**: FIRST VERIFIED TOOL CALL. IronClaw called `github_fetch` via rj-tool, returned
+real content from `gateway/main.go` (8 func declarations, exact match verified).
+
+**Evidence** (ic-proof-of-life-1772473032, 2026-03-02T17:37:12Z):
+- tool_calls=1 (github_fetch via exec/rj-tool)
+- duration=95s (real Sonnet LLM call)
+- confabulated=false (no flags)
+- Output: 8 functions listed, all match `grep "^func " gateway/main.go` exactly
+- File SHA: d00e0969e1eb54aae9dfc88a597552207003ffd6
+
+**Key fix**: Explicit tool-forcing language in campaign prompt:
+  "You MUST use the exec tool to call rj-tool. Do NOT guess or fabricate file contents."
+
 **Goal**: IronClaw calls one gateway tool and returns the real result.
 
 **Why IronClaw**: It's the closest to working. It makes real LLM calls. It has the rj-tool
