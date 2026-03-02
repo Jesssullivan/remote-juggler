@@ -1,0 +1,44 @@
+{
+  "id": "tc-proof-of-life",
+  "name": "TinyClaw Proof of Life",
+  "description": "Phase 5: Verify TinyClaw can make a real tool call via agentic dispatch. The adapter calls the Anthropic Messages API directly with gateway tools, bypassing PicoClaw's text-only dispatch.",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "Call github_fetch to read gateway/main.go from tinyland-inc/remote-juggler",
+    "Report the first exported function name you find in the file, with its line number",
+    "Write a brief __memory__ reflection about this being your first real tool call via agentic dispatch"
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-proof-of-life"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent called github_fetch (gateway audit log shows tool=github_fetch agent=tinyclaw), returned real file content, tool_calls >= 1.",
+    "kpis": [
+      "tool_calls",
+      "tokens_used"
+    ]
+  }
+}

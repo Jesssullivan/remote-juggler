@@ -1,0 +1,45 @@
+{
+  "id": "ic-finding-for-handoff",
+  "name": "IronClaw Finding for TinyClaw Handoff",
+  "description": "Phase 5: IronClaw reads a Go file, identifies a code pattern worth reviewing, and produces a finding tagged for TinyClaw to independently verify.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "STEP 1: Read the file. Call: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/portal.go\"})",
+    "STEP 2: From the ACTUAL content returned in Step 1, identify one specific code pattern worth reviewing (e.g., error handling gaps, missing validation, URL construction issues). Note the exact line numbers.",
+    "STEP 3: Produce a __findings__ block with: title describing the pattern, body containing the exact line reference and a short code snippet from the file, severity=medium, labels=['code-quality','handoff:tinyclaw'], fingerprint='ic-portal-review-{pattern-name}'",
+    "STEP 4: Write a __memory__ reflection about what you found and how you identified the pattern."
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-finding-for-handoff"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent read the file via rj-tool, produced a finding with real line references from the actual file content, finding tagged for tinyclaw handoff.",
+    "kpis": [
+      "findings_count",
+      "tool_calls"
+    ]
+  }
+}

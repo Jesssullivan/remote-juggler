@@ -91,7 +91,7 @@ type Adapter struct {
 }
 
 // NewAdapter creates an Adapter for the specified agent type.
-func NewAdapter(agentType, agentURL, gatewayURL, authToken, skillsDir string) (*Adapter, error) {
+func NewAdapter(agentType, agentURL, gatewayURL, authToken, skillsDir, anthropicKey, anthropicBaseURL, anthropicModel string) (*Adapter, error) {
 	var backend AgentBackend
 	switch agentType {
 	case "ironclaw", "openclaw":
@@ -107,6 +107,15 @@ func NewAdapter(agentType, agentURL, gatewayURL, authToken, skillsDir string) (*
 		b := NewTinyclawBackend(agentURL, gatewayURL)
 		if skillsDir != "" {
 			b.SetSkillsDir(skillsDir)
+		}
+		if anthropicKey != "" {
+			b.SetAPIKey(anthropicKey)
+		}
+		if anthropicBaseURL != "" {
+			b.SetAPIBaseURL(anthropicBaseURL)
+		}
+		if anthropicModel != "" {
+			b.SetModel(anthropicModel)
 		}
 		backend = b
 	case "hexstrike-ai", "hexstrike":

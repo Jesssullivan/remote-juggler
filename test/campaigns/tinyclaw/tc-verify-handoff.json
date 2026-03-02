@@ -1,0 +1,52 @@
+{
+  "id": "tc-verify-handoff",
+  "name": "TinyClaw Verify IronClaw Finding",
+  "description": "Phase 5: TinyClaw independently verifies IronClaw's finding by reading the same file and checking whether the identified pattern actually exists.",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual",
+    "dependsOn": [
+      "ic-finding-for-handoff"
+    ]
+  },
+  "process": [
+    "Read IronClaw's latest result from Setec: call juggler_setec_get with name=remotejuggler/campaigns/ic-finding-for-handoff/latest",
+    "Parse the result JSON and extract the findings array. Note the title, body, and any line references.",
+    "Independently fetch the same file: call github_fetch with owner=tinyland-inc, repo=remote-juggler, path=gateway/portal.go",
+    "Check the specific lines and pattern IronClaw identified. Does the finding hold up? Look at the actual code around those line numbers.",
+    "Produce a __findings__ block with your verification result: title='Verification: {original-title}', body explaining whether you confirmed or disputed the finding with evidence from the actual file content, severity=low, labels=['verification','cross-agent'], fingerprint='tc-verify-{original-fingerprint}'",
+    "Write a __memory__ reflection about cross-agent verification: what worked, what could be improved in the handoff process."
+  ],
+  "tools": [
+    "juggler_setec_get",
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-verify-handoff"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "TinyClaw read IronClaw's finding from Setec, independently fetched the same file, and produced a verification finding with evidence from the actual file content.",
+    "kpis": [
+      "tool_calls",
+      "findings_count",
+      "tokens_used"
+    ]
+  }
+}

@@ -76,3 +76,85 @@ func fetchGatewayTools(client *http.Client, gatewayURL string) ([]map[string]any
 
 	return tools, nil
 }
+
+// AnthropicTool is the Anthropic Messages API tool format.
+type AnthropicTool struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"input_schema"`
+}
+
+// fetchGatewayToolsAnthropic retrieves MCP tool definitions from rj-gateway
+// and converts them to Anthropic Messages API format (input_schema field).
+// If allowedTools is non-empty, only tools whose names appear in the list are returned.
+func fetchGatewayToolsAnthropic(client *http.Client, gatewayURL string, allowedTools []string) ([]AnthropicTool, error) {
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/list",
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, gatewayURL+"/mcp", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("gateway tools/list: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read: %w", err)
+	}
+
+	var mcpResp struct {
+		Result struct {
+			Tools []struct {
+				Name        string          `json:"name"`
+				Description string          `json:"description"`
+				InputSchema json.RawMessage `json:"inputSchema"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
+		return nil, fmt.Errorf("parse tools: %w", err)
+	}
+
+	// Build allowed set for filtering.
+	allowed := make(map[string]bool, len(allowedTools))
+	for _, name := range allowedTools {
+		allowed[name] = true
+	}
+
+	var tools []AnthropicTool
+	for _, t := range mcpResp.Result.Tools {
+		if len(allowed) > 0 && !allowed[t.Name] {
+			continue
+		}
+		tool := AnthropicTool{
+			Name:        t.Name,
+			Description: t.Description,
+		}
+		if len(t.InputSchema) > 0 {
+			var schema map[string]any
+			if err := json.Unmarshal(t.InputSchema, &schema); err == nil {
+				tool.InputSchema = schema
+			}
+		}
+		if tool.InputSchema == nil {
+			tool.InputSchema = map[string]any{"type": "object", "properties": map[string]any{}}
+		}
+		tools = append(tools, tool)
+	}
+
+	return tools, nil
+}

@@ -163,7 +163,9 @@ resource "kubernetes_deployment" "tinyclaw" {
           }
         }
 
-        # Adapter sidecar — bridges campaign protocol to TinyClaw's native API
+        # Adapter sidecar — bridges campaign protocol to TinyClaw's native API.
+        # When ANTHROPIC_API_KEY is set, campaigns with tools use agentic dispatch
+        # (direct Anthropic API + gateway tool execution) instead of PicoClaw text-only.
         container {
           name  = "adapter"
           image = var.adapter_image
@@ -175,6 +177,22 @@ resource "kubernetes_deployment" "tinyclaw" {
             "--gateway-url=http://rj-gateway.${kubernetes_namespace.main.metadata[0].name}.svc.cluster.local:8080",
             "--skills-dir=/workspace/skills",
           ]
+
+          env {
+            name = "ANTHROPIC_API_KEY"
+            value_from {
+              secret_key_ref {
+                name     = kubernetes_secret.agent_api_keys.metadata[0].name
+                key      = "ANTHROPIC_API_KEY"
+                optional = true
+              }
+            }
+          }
+
+          env {
+            name  = "ANTHROPIC_BASE_URL"
+            value = local.anthropic_direct_url
+          }
 
           port {
             container_port = 8080

@@ -361,6 +361,24 @@
       "enabled": true,
       "lastRun": null,
       "lastResult": null
+    },
+    "tc-proof-of-life": {
+      "file": "tinyclaw/tc-proof-of-life.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "ic-finding-for-handoff": {
+      "file": "openclaw/ic-finding-for-handoff.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "tc-verify-handoff": {
+      "file": "tinyclaw/tc-verify-handoff.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
     }
   }
 }
