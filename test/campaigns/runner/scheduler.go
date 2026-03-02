@@ -193,17 +193,23 @@ killSwitchCleared:
 		return fmt.Errorf("no dispatcher configured")
 	}
 
-	// Pre-run: fetch agent's persistent memory for context injection.
+	// Pre-run: fetch agent's persistent memory and skills for context injection.
 	var memoryContext string
+	var skillsContext string
 	if s.collector != nil {
 		memoryContext = s.collector.GetAgentMemory(ctx, campaign.Agent)
 		if memoryContext != "" {
 			log.Printf("campaign %s: loaded %d bytes of agent memory for %s",
 				campaign.ID, len(memoryContext), campaign.Agent)
 		}
+		skillsContext = s.collector.GetAgentSkills(ctx, campaign.Agent)
+		if skillsContext != "" {
+			log.Printf("campaign %s: loaded %d bytes of agent skills for %s",
+				campaign.ID, len(skillsContext), campaign.Agent)
+		}
 	}
 
-	dispatchResult, err := s.dispatcher.Dispatch(ctx, campaign, runID, memoryContext)
+	dispatchResult, err := s.dispatcher.Dispatch(ctx, campaign, runID, memoryContext, skillsContext)
 	if err != nil {
 		result.Status = "error"
 		result.Error = err.Error()
@@ -240,6 +246,13 @@ killSwitchCleared:
 	if dispatchResult.Reflection != "" && s.collector != nil {
 		if err := s.collector.StoreAgentMemory(ctx, campaign.Agent, dispatchResult.Reflection); err != nil {
 			log.Printf("campaign %s: failed to store agent memory: %v", campaign.ID, err)
+		}
+	}
+
+	// Post-run: save agent skill to skill library (Voyager pattern).
+	if dispatchResult.Skill != "" && s.collector != nil {
+		if err := s.collector.StoreAgentSkill(ctx, campaign.Agent, dispatchResult.Skill); err != nil {
+			log.Printf("campaign %s: failed to store agent skill: %v", campaign.ID, err)
 		}
 	}
 

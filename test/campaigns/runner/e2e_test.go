@@ -251,7 +251,7 @@ func TestE2EDirectDispatch(t *testing.T) {
 	dispatcher := NewDispatcher(server.URL, "", "", "")
 	ctx := context.Background()
 
-	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "")
+	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "", "")
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestE2EAgentDispatch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	result, err := dispatcher.dispatchToAgent(ctx, campaign, "run-1", agentServer.URL, "")
+	result, err := dispatcher.dispatchToAgent(ctx, campaign, "run-1", agentServer.URL, "", "")
 	if err != nil {
 		t.Fatalf("dispatchToAgent: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestE2EToolFailure(t *testing.T) {
 	dispatcher := NewDispatcher(server.URL, "", "", "")
 	ctx := context.Background()
 
-	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "")
+	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "", "")
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestE2EGatewayUnavailable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "")
+	result, err := dispatcher.Dispatch(ctx, campaign, "run-1", "", "")
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -613,7 +613,7 @@ func TestE2ENoBudgetNoCap(t *testing.T) {
 	}
 
 	dispatcher := NewDispatcher(server.URL, "", "", "")
-	result, err := dispatcher.Dispatch(context.Background(), campaign, "run-1", "")
+	result, err := dispatcher.Dispatch(context.Background(), campaign, "run-1", "", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -21,6 +24,7 @@ import (
 type IronclawBackend struct {
 	agentURL   string
 	authToken  string
+	skillsDir  string // Path to workspace/skills/ directory (optional)
 	httpClient *http.Client
 }
 
@@ -36,6 +40,49 @@ func NewIronclawBackend(agentURL string) *IronclawBackend {
 // SetAuthToken sets the Bearer token for OpenClaw API authentication.
 func (b *IronclawBackend) SetAuthToken(token string) {
 	b.authToken = token
+}
+
+// SetSkillsDir sets the path to the workspace skills directory.
+// SKILL.md files under this directory are loaded and injected into campaign prompts.
+func (b *IronclawBackend) SetSkillsDir(dir string) {
+	b.skillsDir = dir
+}
+
+// loadSkills reads all SKILL.md files from the skills directory and returns
+// their content concatenated as context for the LLM prompt.
+func (b *IronclawBackend) loadSkills() string {
+	if b.skillsDir == "" {
+		return ""
+	}
+
+	entries, err := os.ReadDir(b.skillsDir)
+	if err != nil {
+		log.Printf("skills: cannot read %s: %v", b.skillsDir, err)
+		return ""
+	}
+
+	var parts []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		skillFile := filepath.Join(b.skillsDir, e.Name(), "SKILL.md")
+		data, err := os.ReadFile(skillFile)
+		if err != nil {
+			continue
+		}
+		content := strings.TrimSpace(string(data))
+		if content != "" {
+			parts = append(parts, content)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	log.Printf("skills: loaded %d skill(s) from %s", len(parts), b.skillsDir)
+	return "\n\n## Skills Reference\n\n" + strings.Join(parts, "\n\n---\n\n")
 }
 
 func (b *IronclawBackend) Type() string { return "ironclaw" }
@@ -105,6 +152,7 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 			SetecKey string `json:"setecKey"`
 		} `json:"outputs"`
 		MemoryContext string `json:"_memory_context,omitempty"`
+		SkillsContext string `json:"_skills_context,omitempty"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
@@ -182,6 +230,17 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	// Output destination
 	if c.Outputs.SetecKey != "" {
 		pb.WriteString(fmt.Sprintf("## Output\nStore results via: `exec(\"/workspace/bin/rj-tool juggler_setec_put name=%s value=<JSON>\")`\n\n", c.Outputs.SetecKey))
+	}
+
+	// Inject workspace skills as reference context.
+	pb.WriteString(b.loadSkills())
+
+	// Dynamic skill library from previous runs (Voyager pattern).
+	if c.SkillsContext != "" {
+		pb.WriteString("\n\n## Your Skill Library\n")
+		pb.WriteString("The following skills were learned from previous runs. Check if any are relevant to this task and follow them if so.\n\n")
+		pb.WriteString(c.SkillsContext)
+		pb.WriteString("\n\n")
 	}
 
 	// Persistent memory from previous runs (Reflexion pattern).
@@ -325,6 +384,7 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	findings := extractFindings(textContent, c.ID, runID)
 	reflection := extractReflection(textContent)
+	skill := extractSkill(textContent)
 
 	// OpenClaw runs the full agent loop internally (exec tool calls → results → LLM).
 	// The /v1/responses endpoint only returns the final message, not intermediate
@@ -340,6 +400,7 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		ToolTrace:  trace,
 		Findings:   findings,
 		Reflection: reflection,
+		Skill:      skill,
 	}, nil
 }
 

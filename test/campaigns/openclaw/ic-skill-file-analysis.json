@@ -1,0 +1,48 @@
+{
+  "id": "ic-skill-file-analysis",
+  "name": "IronClaw Skill Builder: File Analysis",
+  "description": "Phase 4: IronClaw reads a Go file, counts functions, identifies patterns, and writes a reusable file-analysis skill to its skill library.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "IMPORTANT: Check your Skill Library section above. If you already have a file-analysis skill, follow its steps instead of improvising.",
+    "STEP 1: Read the file. Call: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/mcp_proxy.go\"})",
+    "STEP 2: From the ACTUAL content returned in Step 1, count the number of exported functions, identify the main patterns used (handler registration, middleware, error handling), and note any interesting architectural decisions.",
+    "STEP 3: Produce a structured analysis with: (a) function count, (b) top 3 patterns with line references, (c) one potential improvement.",
+    "STEP 4: Document your file analysis procedure as a reusable skill between __skill__ and __end_skill__ markers. Include the exact steps you followed, what worked well, and common gotchas.",
+    "STEP 5: Write your reflection between __memory__ and __end_memory__ markers."
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-skill-file-analysis"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent read the file via rj-tool, produced structured analysis, and output a __skill__ block documenting the file analysis procedure.",
+    "kpis": [
+      "skill_bytes_written",
+      "functions_identified",
+      "patterns_documented"
+    ]
+  }
+}

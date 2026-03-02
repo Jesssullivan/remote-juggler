@@ -343,6 +343,24 @@
       "enabled": true,
       "lastRun": null,
       "lastResult": null
+    },
+    "ic-skill-file-analysis": {
+      "file": "openclaw/ic-skill-file-analysis.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "ic-skill-test-writer": {
+      "file": "openclaw/ic-skill-test-writer.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "ic-skill-code-review": {
+      "file": "openclaw/ic-skill-code-review.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
     }
   }
 }

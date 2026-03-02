@@ -1,0 +1,49 @@
+{
+  "id": "ic-skill-code-review",
+  "name": "IronClaw Skill Builder: Code Review",
+  "description": "Phase 4: IronClaw reads a complex Go file, produces a structured code review with specific line references, and documents the review procedure as a reusable skill.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "IMPORTANT: Check your Skill Library section above. If you already have a code-review skill, follow its steps instead of improvising.",
+    "STEP 1: Read the file. Call: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/github_tools.go\"})",
+    "STEP 2: From the ACTUAL content returned in Step 1, perform a structured code review covering: (a) error handling patterns, (b) input validation, (c) code organization, (d) potential bugs or edge cases.",
+    "STEP 3: For each finding, cite the specific function name and approximate line range. Rate each finding as critical/high/medium/low severity.",
+    "STEP 4: Output actionable findings between __findings__ and __end_findings__ markers (JSON array).",
+    "STEP 5: Document your code review procedure as a reusable skill between __skill__ and __end_skill__ markers. Include the review checklist you followed, how you prioritized findings, and common pitfalls.",
+    "STEP 6: Write your reflection between __memory__ and __end_memory__ markers."
+  ],
+  "tools": [
+    "github_fetch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-skill-code-review"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent read the file, produced structured code review with line references, and output a __skill__ block documenting the review procedure.",
+    "kpis": [
+      "skill_bytes_written",
+      "findings_with_line_refs",
+      "review_categories_covered"
+    ]
+  }
+}

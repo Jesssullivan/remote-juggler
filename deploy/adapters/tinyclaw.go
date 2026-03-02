@@ -127,6 +127,7 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 			SetecKey string `json:"setecKey"`
 		} `json:"outputs"`
 		MemoryContext string `json:"_memory_context,omitempty"`
+		SkillsContext string `json:"_skills_context,omitempty"`
 	}
 	if err := json.Unmarshal(campaign, &c); err != nil {
 		return nil, fmt.Errorf("parse campaign: %w", err)
@@ -185,6 +186,14 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	// Inject workspace skills as reference context.
 	pb.WriteString(b.loadSkills())
+
+	// Dynamic skill library from previous runs (Voyager pattern).
+	if c.SkillsContext != "" {
+		pb.WriteString("\n\n## Your Skill Library\n")
+		pb.WriteString("The following skills were learned from previous runs. Check if any are relevant to this task and follow them if so.\n\n")
+		pb.WriteString(c.SkillsContext)
+		pb.WriteString("\n\n")
+	}
 
 	// Persistent memory from previous runs (Reflexion pattern).
 	if c.MemoryContext != "" {
@@ -255,6 +264,7 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 
 	findings := extractFindings(dispatchResp.Content, c.ID, runID)
 	reflection := extractReflection(dispatchResp.Content)
+	skill := extractSkill(dispatchResp.Content)
 
 	// Estimate tool calls from response content.
 	// TinyClaw's dispatch response doesn't report tool calls directly,
@@ -266,6 +276,7 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 		ToolCalls:  toolCalls,
 		Findings:   findings,
 		Reflection: reflection,
+		Skill:      skill,
 	}, nil
 }
 

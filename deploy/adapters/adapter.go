@@ -15,6 +15,7 @@ type CampaignRequest struct {
 	Campaign      json.RawMessage `json:"campaign"`
 	RunID         string          `json:"run_id"`
 	MemoryContext string          `json:"memory_context,omitempty"`
+	SkillsContext string          `json:"skills_context,omitempty"`
 }
 
 // CampaignResponse is returned by POST /campaign (202 Accepted).
@@ -49,6 +50,7 @@ type LastResult struct {
 	ToolTrace  []ToolTrace    `json:"tool_trace,omitempty"`
 	Findings   []Finding      `json:"findings,omitempty"`
 	Reflection string         `json:"reflection,omitempty"` // Agent self-critique for persistent memory (Reflexion pattern).
+	Skill      string         `json:"skill,omitempty"`      // Agent-proposed skill procedure (Voyager pattern).
 	Error      string         `json:"error,omitempty"`
 }
 
@@ -97,6 +99,9 @@ func NewAdapter(agentType, agentURL, gatewayURL, authToken, skillsDir string) (*
 		if authToken != "" {
 			b.SetAuthToken(authToken)
 		}
+		if skillsDir != "" {
+			b.SetSkillsDir(skillsDir)
+		}
 		backend = b
 	case "tinyclaw":
 		b := NewTinyclawBackend(agentURL, gatewayURL)
@@ -139,11 +144,16 @@ func (a *Adapter) handleCampaign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Inject memory context into campaign JSON so backends can read it.
-	if req.MemoryContext != "" {
+	// Inject memory and skills context into campaign JSON so backends can read it.
+	if req.MemoryContext != "" || req.SkillsContext != "" {
 		var campaignMap map[string]any
 		if err := json.Unmarshal(req.Campaign, &campaignMap); err == nil {
-			campaignMap["_memory_context"] = req.MemoryContext
+			if req.MemoryContext != "" {
+				campaignMap["_memory_context"] = req.MemoryContext
+			}
+			if req.SkillsContext != "" {
+				campaignMap["_skills_context"] = req.SkillsContext
+			}
 			if merged, err := json.Marshal(campaignMap); err == nil {
 				req.Campaign = merged
 			}
@@ -225,7 +235,8 @@ func (a *Adapter) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // findingsInstruction is appended to agent prompts so agents know how to
-// emit structured findings and memory reflections that the adapter can extract.
+// emit structured findings, memory reflections, and skill procedures that
+// the adapter can extract.
 const findingsInstruction = `
 
 When you complete your analysis, if you have actionable findings to report, output them as a JSON block delimited by markers:
@@ -239,7 +250,18 @@ What I did: <brief summary>
 What I learned: <key insights with evidence>
 Next time: <what to do differently or explore further>
 __end_memory__
-This reflection will be saved and provided to you on your next run so you can build on your work.`
+This reflection will be saved and provided to you on your next run so you can build on your work.
+
+If you discovered a reusable procedure during this task, document it between these markers:
+__skill__
+### Skill: <name>
+When to use: <trigger condition>
+Steps:
+1. <step 1>
+2. <step 2>
+Gotchas: <common failure modes>
+__end_skill__
+This skill will be added to your skill library and provided on future runs so you can reuse proven procedures.`
 
 // extractReflection parses a __memory__...__end_memory__ delimited block
 // from agent text output. Returns the trimmed text between markers, or ""
@@ -247,6 +269,27 @@ This reflection will be saved and provided to you on your next run so you can bu
 func extractReflection(text string) string {
 	const startMarker = "__memory__"
 	const endMarker = "__end_memory__"
+
+	startIdx := strings.Index(text, startMarker)
+	if startIdx < 0 {
+		return ""
+	}
+	startIdx += len(startMarker)
+
+	endIdx := strings.Index(text[startIdx:], endMarker)
+	if endIdx < 0 {
+		return ""
+	}
+
+	return strings.TrimSpace(text[startIdx : startIdx+endIdx])
+}
+
+// extractSkill parses a __skill__...__end_skill__ delimited block
+// from agent text output. Returns the trimmed text between markers, or ""
+// if no skill block is found.
+func extractSkill(text string) string {
+	const startMarker = "__skill__"
+	const endMarker = "__end_skill__"
 
 	startIdx := strings.Index(text, startMarker)
 	if startIdx < 0 {

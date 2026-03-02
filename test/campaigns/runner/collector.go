@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 )
 
 // Collector stores campaign results in Setec via rj-gateway MCP tool calls.
@@ -157,4 +158,112 @@ func (c *Collector) StoreAgentMemory(ctx context.Context, agent, reflection stri
 	}
 	log.Printf("stored %d bytes of agent memory for %s", len(reflection), agent)
 	return nil
+}
+
+// GetAgentSkills retrieves an agent's accumulated skills from Setec.
+// Returns empty string if no skills exist or on any error.
+// Skills are stored at key: remotejuggler/agents/{agent}/skills
+func (c *Collector) GetAgentSkills(ctx context.Context, agent string) string {
+	key := fmt.Sprintf("remotejuggler/agents/%s/skills", agent)
+	resp, err := c.dispatcher.callTool(ctx, "juggler_setec_get", map[string]any{
+		"name": key,
+	})
+	if err != nil {
+		return ""
+	}
+
+	var mcpResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(resp, &mcpResult); err != nil || len(mcpResult.Content) == 0 {
+		return ""
+	}
+
+	return mcpResult.Content[0].Text
+}
+
+// StoreAgentSkill appends a new skill to the agent's skill library in Setec.
+// If a skill with the same name exists, it is replaced (upsert by ### Skill: header).
+// Skills are stored at key: remotejuggler/agents/{agent}/skills
+func (c *Collector) StoreAgentSkill(ctx context.Context, agent, skill string) error {
+	existing := c.GetAgentSkills(ctx, agent)
+	merged := upsertSkill(existing, skill)
+
+	key := fmt.Sprintf("remotejuggler/agents/%s/skills", agent)
+	_, err := c.dispatcher.callTool(ctx, "juggler_setec_put", map[string]any{
+		"name":  key,
+		"value": merged,
+	})
+	if err != nil {
+		return fmt.Errorf("store agent skill for %s: %w", agent, err)
+	}
+	log.Printf("stored %d bytes of agent skills for %s", len(merged), agent)
+	return nil
+}
+
+// upsertSkill merges a new skill into existing skills text.
+// If a skill with the same "### Skill:" header exists, it is replaced.
+// Otherwise, the new skill is appended.
+func upsertSkill(existing, newSkill string) string {
+	newSkill = strings.TrimSpace(newSkill)
+	if newSkill == "" {
+		return existing
+	}
+
+	newName := parseSkillName(newSkill)
+	if newName == "" {
+		// Can't parse skill name — append as-is.
+		if existing == "" {
+			return newSkill
+		}
+		return existing + "\n\n---\n\n" + newSkill
+	}
+
+	if existing == "" {
+		return newSkill
+	}
+
+	// Parse existing into sections by "### Skill:" headers.
+	sections := splitSkillSections(existing)
+	replaced := false
+	for i, section := range sections {
+		if parseSkillName(section) == newName {
+			sections[i] = newSkill
+			replaced = true
+			break
+		}
+	}
+
+	if !replaced {
+		sections = append(sections, newSkill)
+	}
+
+	return strings.Join(sections, "\n\n---\n\n")
+}
+
+// parseSkillName extracts the skill name from a "### Skill: <name>" header.
+func parseSkillName(skill string) string {
+	for _, line := range strings.Split(skill, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "### Skill:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "### Skill:"))
+		}
+	}
+	return ""
+}
+
+// splitSkillSections splits accumulated skills text into individual sections
+// delimited by "---" separators.
+func splitSkillSections(text string) []string {
+	parts := strings.Split(text, "\n\n---\n\n")
+	var sections []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			sections = append(sections, p)
+		}
+	}
+	return sections
 }

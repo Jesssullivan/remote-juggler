@@ -1,0 +1,51 @@
+{
+  "id": "ic-skill-test-writer",
+  "name": "IronClaw Skill Builder: Test Writer",
+  "description": "Phase 4: IronClaw reads a Go file, identifies an untested function, writes a test for it, and documents the test-writing procedure as a reusable skill.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "IMPORTANT: Check your Skill Library section above. If you already have a test-writer skill, follow its steps instead of improvising.",
+    "STEP 1: Read the file. Call: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/portal.go\"})",
+    "STEP 2: From the ACTUAL content returned in Step 1, identify one exported function that would benefit from a unit test. Pick a function with clear inputs and outputs.",
+    "STEP 3: Write a Go test function for it. The test should cover at least: (a) a happy path, (b) an edge case. Use standard Go testing patterns (table-driven if appropriate).",
+    "STEP 4: Create the test file via rj-tool. First write to a temp file, then use github_update_file with --content-file to create gateway/portal_test.go on a new branch.",
+    "STEP 5: Document your test-writing procedure as a reusable skill between __skill__ and __end_skill__ markers. Include how you chose the function, structured the test, and handled file creation.",
+    "STEP 6: Write your reflection between __memory__ and __end_memory__ markers."
+  ],
+  "tools": [
+    "github_fetch",
+    "github_update_file",
+    "github_create_branch"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-skill-test-writer"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": false
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent read the file, identified an untested function, wrote a test, and output a __skill__ block documenting the test-writing procedure.",
+    "kpis": [
+      "skill_bytes_written",
+      "test_cases_written",
+      "functions_tested"
+    ]
+  }
+}

@@ -186,6 +186,47 @@ func TestAdapter_CampaignConflict(t *testing.T) {
 	}
 }
 
+func TestExtractSkill(t *testing.T) {
+	text := `Here is what I did.
+__skill__
+### Skill: file-analysis
+When to use: When asked to analyze a Go source file
+Steps:
+1. Read the file with github_fetch
+2. Count exported functions
+3. Identify patterns
+Gotchas: Make sure to use the actual file content, not guesses
+__end_skill__
+That's all.`
+
+	skill := extractSkill(text)
+	if skill == "" {
+		t.Fatal("expected skill to be extracted")
+	}
+	if !strings.Contains(skill, "### Skill: file-analysis") {
+		t.Errorf("expected skill header, got: %s", skill)
+	}
+	if !strings.Contains(skill, "Count exported functions") {
+		t.Errorf("expected skill steps, got: %s", skill)
+	}
+}
+
+func TestExtractSkillEmpty(t *testing.T) {
+	skill := extractSkill("No skill markers here.")
+	if skill != "" {
+		t.Errorf("expected empty string, got: %s", skill)
+	}
+}
+
+func TestExtractSkillMalformed(t *testing.T) {
+	// Only start marker, no end marker.
+	text := "__skill__\n### Skill: incomplete\nSteps:\n1. Something"
+	skill := extractSkill(text)
+	if skill != "" {
+		t.Errorf("expected empty string for malformed skill, got: %s", skill)
+	}
+}
+
 func TestExtractFindings(t *testing.T) {
 	text := `Here is my analysis.
 __findings__[{"title":"SQL injection in login","body":"The login handler concatenates user input into SQL","severity":"critical","labels":["security"],"fingerprint":"sql-inject-login-001"}]__end_findings__

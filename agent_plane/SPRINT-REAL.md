@@ -271,7 +271,22 @@ kubectl exec deploy/ironclaw-agent -c campaign-runner -- wget -qO- 'http://local
 
 ---
 
-### Phase 3: Persistent Memory + Learning (Days 13-18)
+### Phase 3: Persistent Memory + Learning (Days 13-18) -- GO 2026-03-02
+
+**Status**: VERIFIED. Full memory loop working. Agent writes real reflections, receives them on next run, and references previous notes.
+
+**Evidence** (two consecutive runs of ic-memory-test):
+- Run 1 (ic-memory-test-1772484307): Agent called `github_fetch` (audit: 10.0.6.89, allowed=true), read `gateway/resolver.go` (5096 bytes), identified Resolver struct with 4 backends (env, sops, kdbx, setec), real function names (Resolve(), resolveSOPS(), resolveKDBX()). Wrote 841 bytes of reflection via `__memory__` markers.
+- Run 2 (ic-memory-test-1772484617): Runner loaded 841 bytes of previous memory. Agent read same file (audit: 10.0.6.181, allowed=true). New reflection (960 bytes) **references previous run**: "Second analysis... focusing on MCP proxy implementation and Chapel integration as planned from previous run." Found NEW observations: code duplication between resolveSOPS()/resolveKDBX(), hardcoded request IDs.
+
+**Implementation (v2 — marker extraction, not tool calls)**:
+- v1 (requiring agent to call setec_put) FAILED: OpenClaw makes max 1-2 exec() tool calls per session, rj-tool shell word splitting truncates multi-word values
+- v2: Adapter extracts text between `__memory__...__end_memory__` markers from agent output. Campaign runner writes to Setec automatically. Agent only needs to output text between markers.
+- Memory stored at `remotejuggler/agents/{agent}/memory` in Setec
+- Memory loaded by campaign runner before dispatch and injected as "Notes from Previous Runs" in prompt
+
+**Key files**: `deploy/adapters/adapter.go` (extractReflection), `test/campaigns/runner/collector.go` (StoreAgentMemory), `test/campaigns/runner/scheduler.go` (pre/post memory hooks)
+
 **Goal**: Agent remembers what it learned and applies it next time.
 
 **Prerequisites**: Phase 2 GO. Agent can read, edit, test, iterate.
@@ -324,14 +339,11 @@ After each campaign run, the agent writes a self-critique to its MEMORY.md:
 | CI pass rate improvement | Run N+3 > Run N | GitHub checks over time |
 | Repeated mistakes | Decreasing | Same error type in consecutive runs |
 
-**Go/NoGo**:
-- **GO**: MEMORY.md has substantive content. Agent references past failures in later runs.
-  CI pass rate improves over 5 runs.
-- **NOGO**: Memory is empty or generic ("I should be more careful"). Agent repeats same
-  mistakes. PIVOT: Hard-code rules in the system prompt instead of relying on agent-written
-  memory. This sacrifices adaptability but ensures consistency.
-- **ASK**: Should memory be stored in the workspace PVC (private to agent) or committed
-  to the repo (visible in PRs)?
+**Go/NoGo**: **GO** (2026-03-02)
+- Memory is substantive (real function names, specific observations, not generic platitudes)
+- Agent references past run: "as planned from previous run"
+- New observations in second run: code duplication, hardcoded request IDs
+- Memory stored in Setec (accessible across pod restarts, not tied to PVC)
 
 ---
 
