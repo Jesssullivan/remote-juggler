@@ -331,6 +331,12 @@
       "enabled": true,
       "lastRun": null,
       "lastResult": null
+    },
+    "ic-edit-test": {
+      "file": "openclaw/ic-edit-test.json",
+      "enabled": false,
+      "lastRun": null,
+      "lastResult": null
     }
   }
 }

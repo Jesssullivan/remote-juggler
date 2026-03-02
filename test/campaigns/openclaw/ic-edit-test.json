@@ -1,0 +1,62 @@
+{
+  "id": "ic-edit-test",
+  "name": "IronClaw Edit-Test Loop (Phase 2)",
+  "description": "Phase 2: IronClaw reads a file, writes a test, creates a PR, and the PR must pass CI. This validates the full read-edit-test loop required for self-improving agents. The target is adding unit tests for parseCapabilities() and HasCapability() in gateway/identity.go, which currently have zero test coverage.",
+  "agent": "ironclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "You MUST use the exec tool to call rj-tool for EVERY operation. Do NOT guess or fabricate file contents. Do NOT rely on memory or training data.",
+    "STEP 1: Read the target file. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/identity.go\"})",
+    "STEP 2: Study the functions parseCapabilities(header string) []string and (CallerIdentity).HasCapability(cap string) bool. Understand their behavior from the source code you just read.",
+    "STEP 3: Read the existing test file to understand test patterns. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_fetch owner=tinyland-inc repo=remote-juggler path=gateway/resolver_test.go\"})",
+    "STEP 4: Create a feature branch. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_create_branch owner=tinyland-inc repo=remote-juggler branch_name=ic-add-identity-tests\"})",
+    "STEP 5: Write a new test file gateway/identity_test.go with tests for parseCapabilities and HasCapability. The file MUST: (a) use package main_test or package main, matching existing test files, (b) import testing, (c) test parseCapabilities with cases: empty string, single cap, multiple caps, caps with spaces, trailing comma, (d) test HasCapability with cases: has capability, missing capability, empty capabilities. Use github_patch_file or github_update_file to create the file. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_update_file owner=tinyland-inc repo=remote-juggler path=gateway/identity_test.go content=<YOUR_TEST_CODE> message=test: add unit tests for parseCapabilities and HasCapability branch=ic-add-identity-tests\"})",
+    "STEP 6: Create a pull request. Execute: exec({\"command\": \"/workspace/bin/rj-tool github_create_pr owner=tinyland-inc repo=remote-juggler title=test: add unit tests for parseCapabilities and HasCapability head=ic-add-identity-tests body=Adds test coverage for two untested functions in identity.go. Created by IronClaw agent as Phase 2 proof of edit-test capability.\"})",
+    "STEP 7: Report the PR URL and number. Your report MUST include the exact PR URL returned by the tool."
+  ],
+  "tools": [
+    "github_fetch",
+    "github_create_branch",
+    "github_update_file",
+    "github_patch_file",
+    "github_create_pr"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/ic-edit-test"
+  },
+  "guardrails": {
+    "maxDuration": "10m",
+    "readOnly": false,
+    "allowedBranches": [
+      "ic-add-identity-tests"
+    ],
+    "allowedPaths": [
+      "gateway/identity_test.go"
+    ]
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false,
+    "publishOnSuccess": false
+  },
+  "metrics": {
+    "successCriteria": "Agent created a PR with a new test file that passes CI (go test ./... green). PR authored by rj-agent-bot[bot], diff is non-trivial, tests actually test the target functions.",
+    "kpis": [
+      "tool_calls_verified",
+      "branch_created",
+      "file_written",
+      "pr_created",
+      "ci_passes"
+    ]
+  }
+}
