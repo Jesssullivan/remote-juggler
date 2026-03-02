@@ -28,6 +28,7 @@ type DispatchResult struct {
 	KPIs       map[string]any
 	ToolTrace  []ToolTraceEntry
 	Findings   []Finding
+	Reflection string // Agent self-critique extracted from __memory__ markers.
 	Error      string
 }
 
@@ -158,12 +159,13 @@ func (d *Dispatcher) pollAgentStatus(ctx context.Context, campaign *Campaign, ag
 			var status struct {
 				Status     string `json:"status"`
 				LastResult *struct {
-					Status    string           `json:"status"`
-					ToolCalls int              `json:"tool_calls"`
-					KPIs      map[string]any   `json:"kpis"`
-					ToolTrace []ToolTraceEntry `json:"tool_trace"`
-					Findings  []Finding        `json:"findings"`
-					Error     string           `json:"error"`
+					Status     string           `json:"status"`
+					ToolCalls  int              `json:"tool_calls"`
+					KPIs       map[string]any   `json:"kpis"`
+					ToolTrace  []ToolTraceEntry `json:"tool_trace"`
+					Findings   []Finding        `json:"findings"`
+					Reflection string           `json:"reflection"`
+					Error      string           `json:"error"`
 				} `json:"last_result"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
@@ -183,6 +185,7 @@ func (d *Dispatcher) pollAgentStatus(ctx context.Context, campaign *Campaign, ag
 				result.KPIs = status.LastResult.KPIs
 				result.ToolTrace = status.LastResult.ToolTrace
 				result.Findings = status.LastResult.Findings
+				result.Reflection = status.LastResult.Reflection
 				result.Error = status.LastResult.Error
 			}
 			return result, nil

@@ -254,6 +254,7 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	}
 
 	findings := extractFindings(dispatchResp.Content, c.ID, runID)
+	reflection := extractReflection(dispatchResp.Content)
 
 	// Estimate tool calls from response content.
 	// TinyClaw's dispatch response doesn't report tool calls directly,
@@ -261,9 +262,10 @@ func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	toolCalls := countToolReferences(dispatchResp.Content, c.Tools)
 
 	return &LastResult{
-		Status:    "success",
-		ToolCalls: toolCalls,
-		Findings:  findings,
+		Status:     "success",
+		ToolCalls:  toolCalls,
+		Findings:   findings,
+		Reflection: reflection,
 	}, nil
 }
 

@@ -236,6 +236,13 @@ killSwitchCleared:
 	log.Printf("campaign %s: run %s completed (status=%s, tools=%d)",
 		campaign.ID, runID, result.Status, result.ToolCalls)
 
+	// Post-run: save agent reflection to persistent memory (Reflexion pattern).
+	if dispatchResult.Reflection != "" && s.collector != nil {
+		if err := s.collector.StoreAgentMemory(ctx, campaign.Agent, dispatchResult.Reflection); err != nil {
+			log.Printf("campaign %s: failed to store agent memory: %v", campaign.ID, err)
+		}
+	}
+
 	s.storeResult(ctx, campaign, result)
 	return nil
 }

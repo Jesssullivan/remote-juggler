@@ -324,6 +324,7 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	}
 
 	findings := extractFindings(textContent, c.ID, runID)
+	reflection := extractReflection(textContent)
 
 	// OpenClaw runs the full agent loop internally (exec tool calls → results → LLM).
 	// The /v1/responses endpoint only returns the final message, not intermediate
@@ -334,10 +335,11 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	}
 
 	return &LastResult{
-		Status:    "success",
-		ToolCalls: toolCalls,
-		ToolTrace: trace,
-		Findings:  findings,
+		Status:     "success",
+		ToolCalls:  toolCalls,
+		ToolTrace:  trace,
+		Findings:   findings,
+		Reflection: reflection,
 	}, nil
 }
 

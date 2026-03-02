@@ -43,12 +43,13 @@ type Finding struct {
 
 // LastResult captures the outcome of the most recent campaign execution.
 type LastResult struct {
-	Status    string         `json:"status"` // "success", "failure", "error"
-	ToolCalls int            `json:"tool_calls"`
-	KPIs      map[string]any `json:"kpis,omitempty"`
-	ToolTrace []ToolTrace    `json:"tool_trace,omitempty"`
-	Findings  []Finding      `json:"findings,omitempty"`
-	Error     string         `json:"error,omitempty"`
+	Status     string         `json:"status"` // "success", "failure", "error"
+	ToolCalls  int            `json:"tool_calls"`
+	KPIs       map[string]any `json:"kpis,omitempty"`
+	ToolTrace  []ToolTrace    `json:"tool_trace,omitempty"`
+	Findings   []Finding      `json:"findings,omitempty"`
+	Reflection string         `json:"reflection,omitempty"` // Agent self-critique for persistent memory (Reflexion pattern).
+	Error      string         `json:"error,omitempty"`
 }
 
 // ToolTrace records a single tool invocation.
@@ -224,12 +225,42 @@ func (a *Adapter) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // findingsInstruction is appended to agent prompts so agents know how to
-// emit structured findings that the adapter can extract.
+// emit structured findings and memory reflections that the adapter can extract.
 const findingsInstruction = `
 
 When you complete your analysis, if you have actionable findings to report, output them as a JSON block delimited by markers:
 __findings__[{"title":"...","body":"...","severity":"critical|high|medium|low","labels":["label1"],"fingerprint":"unique-key"}]__end_findings__
-Each finding should have a unique fingerprint for deduplication. Omit the block entirely if there are no findings.`
+Each finding should have a unique fingerprint for deduplication. Omit the block entirely if there are no findings.
+
+After your analysis, write a brief self-reflection for your future self between these markers:
+__memory__
+Date: <today>
+What I did: <brief summary>
+What I learned: <key insights with evidence>
+Next time: <what to do differently or explore further>
+__end_memory__
+This reflection will be saved and provided to you on your next run so you can build on your work.`
+
+// extractReflection parses a __memory__...__end_memory__ delimited block
+// from agent text output. Returns the trimmed text between markers, or ""
+// if no reflection block is found.
+func extractReflection(text string) string {
+	const startMarker = "__memory__"
+	const endMarker = "__end_memory__"
+
+	startIdx := strings.Index(text, startMarker)
+	if startIdx < 0 {
+		return ""
+	}
+	startIdx += len(startMarker)
+
+	endIdx := strings.Index(text[startIdx:], endMarker)
+	if endIdx < 0 {
+		return ""
+	}
+
+	return strings.TrimSpace(text[startIdx : startIdx+endIdx])
+}
 
 // extractFindings parses a __findings__[...]__end_findings__ delimited JSON
 // block from agent text output. It stamps campaign_id and run_id onto each

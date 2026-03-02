@@ -143,3 +143,18 @@ func (c *Collector) GetAgentMemory(ctx context.Context, agent string) string {
 
 	return mcpResult.Content[0].Text
 }
+
+// StoreAgentMemory writes an agent's persistent memory to Setec.
+// Memory is stored at key: remotejuggler/agents/{agent}/memory
+func (c *Collector) StoreAgentMemory(ctx context.Context, agent, reflection string) error {
+	key := fmt.Sprintf("remotejuggler/agents/%s/memory", agent)
+	_, err := c.dispatcher.callTool(ctx, "juggler_setec_put", map[string]any{
+		"name":  key,
+		"value": reflection,
+	})
+	if err != nil {
+		return fmt.Errorf("store agent memory for %s: %w", agent, err)
+	}
+	log.Printf("stored %d bytes of agent memory for %s", len(reflection), agent)
+	return nil
+}
