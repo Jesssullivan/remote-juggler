@@ -1143,6 +1143,26 @@ prototype module Tools {
   }
 
   /*
+   * Escape a string for safe interpolation into a JSON string value.
+   *
+   * Handles: backslash, double-quote, newline, carriage return, tab.
+   * Must replace backslash FIRST so subsequent replacements don't
+   * double-escape.
+   *
+   * :arg s: Raw string value
+   * :returns: JSON-safe escaped string (without surrounding quotes)
+   */
+  proc escapeJsonString(s: string): string {
+    var out = s;
+    out = out.replace("\\", "\\\\");
+    out = out.replace("\"", "\\\"");
+    out = out.replace("\n", "\\n");
+    out = out.replace("\r", "\\r");
+    out = out.replace("\t", "\\t");
+    return out;
+  }
+
+  /*
    * Read the config file contents.
    */
   proc readConfigFile(): (bool, string) {
@@ -4371,7 +4391,9 @@ prototype module Tools {
 
     // Read current local manifest if it exists
     const localManifestPath = Manifest.getHostManifestPath(secretsDir, hostname);
-    var localManifest = Manifest.readManifest(localManifestPath);
+    var localMetadata: Manifest.ManifestMetadata;
+    var localSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(localManifestPath, localMetadata, localSecrets);
 
     // Step 2: Discover host manifests and merge
     const hostManifests = Manifest.discoverHostManifests(secretsDir);
@@ -4383,10 +4405,12 @@ prototype module Tools {
 
     // Find the canonical (merged) manifest
     const canonicalPath = secretsDir + "/.manifest.toml";
-    var canonicalManifest = Manifest.readManifest(canonicalPath);
+    var canonicalMetadata: Manifest.ManifestMetadata;
+    var canonicalSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(canonicalPath, canonicalMetadata, canonicalSecrets);
 
     // Merge local against canonical
-    var result = Manifest.mergeManifests(localManifest, canonicalManifest, strategy);
+    var result = Manifest.mergeManifests(localSecrets, canonicalSecrets, hostname, strategy);
 
     if dryRun {
       // Return merge plan without executing
@@ -4394,15 +4418,17 @@ prototype module Tools {
     }
 
     // Step 3: Execute push/pull actions
-    const execResult = Manifest.executeMergeActions(result, secretsDir);
+    const (pushCount, pullCount, failCount) = Manifest.executeMergeActions(result, secretsDir, hostname);
 
     // Step 4: Write updated manifest
     const updatedPath = Manifest.getHostManifestPath(secretsDir, hostname);
-    Manifest.writeManifest(localManifest, updatedPath);
+    Manifest.writeManifest(updatedPath, localMetadata, localSecrets);
 
     // Step 5: Log the sync
-    Manifest.auditLog(secretsDir,
-      "sync:" + hostname + ":pushed=" + result.pushed:string +
+    Manifest.auditLog(secretsDir, "sync",
+      hostname,
+      hostname,
+      "pushed=" + result.pushed:string +
       ",pulled=" + result.pulled:string +
       ",conflicts=" + result.conflicts:string);
 
@@ -4435,15 +4461,19 @@ prototype module Tools {
 
     // Read the canonical manifest
     const canonicalPath = secretsDir + "/.manifest.toml";
-    var canonicalManifest = Manifest.readManifest(canonicalPath);
+    var canonicalMetadata: Manifest.ManifestMetadata;
+    var canonicalSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(canonicalPath, canonicalMetadata, canonicalSecrets);
 
     // Read local host manifest
     const hostname = Manifest.getLocalHostname();
     const localPath = Manifest.getHostManifestPath(secretsDir, hostname);
-    var localManifest = Manifest.readManifest(localPath);
+    var localMetadata: Manifest.ManifestMetadata;
+    var localSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(localPath, localMetadata, localSecrets);
 
     // Merge with promptUser strategy to surface all conflicts
-    var result = Manifest.mergeManifests(localManifest, canonicalManifest,
+    var result = Manifest.mergeManifests(localSecrets, canonicalSecrets, hostname,
                                          Manifest.ConflictStrategy.promptUser);
 
     if result.unresolvedConflicts.size == 0 {
@@ -4458,13 +4488,13 @@ prototype module Tools {
       first = false;
 
       output += '{';
-      output += '"canonical_name":"' + conflict.canonicalName + '",';
+      output += '"canonical_name":"' + escapeJsonString(conflict.canonicalName) + '",';
       output += '"local_hash":"' + conflict.localHash + '",';
       output += '"remote_hash":"' + conflict.remoteHash + '",';
-      output += '"local_host":"' + conflict.localHost + '",';
-      output += '"remote_host":"' + conflict.remoteHost + '",';
-      output += '"local_updated":"' + conflict.localUpdatedAt + '",';
-      output += '"remote_updated":"' + conflict.remoteUpdatedAt + '"';
+      output += '"local_host":"' + escapeJsonString(conflict.localHost) + '",';
+      output += '"remote_host":"' + escapeJsonString(conflict.remoteHost) + '",';
+      output += '"local_updated":"' + conflict.localDiscoveredAt + '",';
+      output += '"remote_updated":"' + conflict.remoteDiscoveredAt + '"';
       output += '}';
     }
     output += '],"count":' + result.unresolvedConflicts.size:string + '}';
@@ -4498,27 +4528,31 @@ prototype module Tools {
 
     const hostname = Manifest.getLocalHostname();
 
+    // Build a SecretEntry for push/pull operations
+    var secretEntry = new Manifest.SecretEntry();
+    secretEntry.canonicalName = canonicalName;
+    secretEntry.sourceHost = hostname;
+
     // Map resolution string to action
     select resolutionStr {
       when "keep-local" {
         // Push local version to TCFS (overwrites remote)
-        const localPath = secretsDir + "/" + canonicalName;
-        const pushOk = Manifest.pushSecretToTcfs(localPath, canonicalName, secretsDir);
+        const pushOk = Manifest.pushSecretToTcfs(secretEntry, secretsDir);
         if pushOk {
-          Manifest.auditLog(secretsDir,
-            "resolve:keep-local:" + canonicalName + ":by=" + hostname);
-          return (true, '{"resolved":"' + canonicalName + '","action":"keep-local","status":"pushed"}');
+          Manifest.auditLog(secretsDir, "resolve:keep-local",
+            canonicalName, hostname);
+          return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-local","status":"pushed"}');
         } else {
           return (false, "Failed to push local version of " + canonicalName);
         }
       }
       when "keep-remote" {
         // Pull remote version (overwrites local)
-        const pullOk = Manifest.pullSecretFromTcfs(canonicalName, secretsDir);
+        const pullOk = Manifest.pullSecretFromTcfs(secretEntry, secretsDir);
         if pullOk {
-          Manifest.auditLog(secretsDir,
-            "resolve:keep-remote:" + canonicalName + ":by=" + hostname);
-          return (true, '{"resolved":"' + canonicalName + '","action":"keep-remote","status":"pulled"}');
+          Manifest.auditLog(secretsDir, "resolve:keep-remote",
+            canonicalName, hostname);
+          return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-remote","status":"pulled"}');
         } else {
           return (false, "Failed to pull remote version of " + canonicalName);
         }
@@ -4540,12 +4574,12 @@ prototype module Tools {
         }
 
         // Pull remote as canonical
-        const pullOk = Manifest.pullSecretFromTcfs(canonicalName, secretsDir);
-        Manifest.auditLog(secretsDir,
-          "resolve:keep-both:" + canonicalName + ":by=" + hostname +
-          ",versioned=" + versionedPath);
+        const pullOk = Manifest.pullSecretFromTcfs(secretEntry, secretsDir);
+        Manifest.auditLog(secretsDir, "resolve:keep-both",
+          canonicalName, hostname,
+          "versioned=" + versionedPath);
 
-        return (true, '{"resolved":"' + canonicalName + '","action":"keep-both","status":"versioned","local_copy":"' + versionedPath + '"}');
+        return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-both","status":"versioned","local_copy":"' + escapeJsonString(versionedPath) + '"}');
       }
       otherwise {
         return (false, "Invalid resolution: " + resolutionStr + ". Must be: keep-local, keep-remote, keep-both");
@@ -4585,14 +4619,16 @@ prototype module Tools {
     if exists(agePath) {
       // Decrypt with age
       if AgeEncryption.hasAgeBinary() {
-        const result = AgeEncryption.ageDecryptToString(agePath);
-        if result.ok {
+        const (decOk, decrypted) = AgeEncryption.ageDecryptToString(agePath);
+        if decOk {
           // Look up source info from manifest
           const manifestPath = secretsDir + "/.manifest.toml";
-          var manifest = Manifest.readManifest(manifestPath);
+          var mMeta: Manifest.ManifestMetadata;
+          var mSecrets: list(Manifest.SecretEntry);
+          Manifest.readManifest(manifestPath, mMeta, mSecrets);
           var sourceType = "unknown";
           var synced = true;
-          for entry in manifest.secrets {
+          for entry in mSecrets {
             if entry.canonicalName == canonicalName {
               sourceType = entry.sourceType;
               synced = entry.synced;
@@ -4600,13 +4636,13 @@ prototype module Tools {
             }
           }
 
-          return (true, '{"canonical_name":"' + canonicalName +
-            '","value":"' + result.outputPath +  // outputPath holds decrypted string
-            '","source":"' + sourceType +
+          return (true, '{"canonical_name":"' + escapeJsonString(canonicalName) +
+            '","value":"' + escapeJsonString(decrypted) +
+            '","source":"' + escapeJsonString(sourceType) +
             '","synced":' + (if synced then "true" else "false") +
             ',"encrypted":true}');
         } else {
-          return (false, "Failed to decrypt " + agePath + ": " + result.errMsg);
+          return (false, "Failed to decrypt " + agePath);
         }
       } else {
         return (false, "age binary not found — cannot decrypt " + agePath);
@@ -4629,10 +4665,12 @@ prototype module Tools {
 
         // Look up source info from manifest
         const manifestPath = secretsDir + "/.manifest.toml";
-        var manifest = Manifest.readManifest(manifestPath);
+        var mMeta: Manifest.ManifestMetadata;
+        var mSecrets: list(Manifest.SecretEntry);
+        Manifest.readManifest(manifestPath, mMeta, mSecrets);
         var sourceType = "unknown";
         var synced = true;
-        for entry in manifest.secrets {
+        for entry in mSecrets {
           if entry.canonicalName == canonicalName {
             sourceType = entry.sourceType;
             synced = entry.synced;
@@ -4640,9 +4678,9 @@ prototype module Tools {
           }
         }
 
-        return (true, '{"canonical_name":"' + canonicalName +
-          '","value":"' + value +
-          '","source":"' + sourceType +
+        return (true, '{"canonical_name":"' + escapeJsonString(canonicalName) +
+          '","value":"' + escapeJsonString(value) +
+          '","source":"' + escapeJsonString(sourceType) +
           '","synced":' + (if synced then "true" else "false") +
           ',"encrypted":false}');
       } catch {
@@ -4676,12 +4714,18 @@ prototype module Tools {
         manifestPath + '. Run discovery first.","secrets_dir":"' + secretsDir + '"}');
     }
 
-    var manifest = Manifest.readManifest(manifestPath);
+    var metadata: Manifest.ManifestMetadata;
+    var secrets: list(Manifest.SecretEntry);
+    const readOk = Manifest.readManifest(manifestPath, metadata, secrets);
+    if !readOk {
+      return (true, '{"status":"no_manifest","message":"Failed to parse manifest at ' +
+        manifestPath + '.","secrets_dir":"' + secretsDir + '"}');
+    }
 
     // Count synced vs unsynced
     var syncedCount = 0;
     var unsyncedCount = 0;
-    for entry in manifest.secrets {
+    for entry in secrets {
       if entry.synced then syncedCount += 1;
       else unsyncedCount += 1;
     }
@@ -4694,8 +4738,10 @@ prototype module Tools {
     const hostname = Manifest.getLocalHostname();
     const localPath = Manifest.getHostManifestPath(secretsDir, hostname);
     if exists(localPath) {
-      var localManifest = Manifest.readManifest(localPath);
-      var result = Manifest.mergeManifests(localManifest, manifest,
+      var localMeta: Manifest.ManifestMetadata;
+      var localSecrets: list(Manifest.SecretEntry);
+      Manifest.readManifest(localPath, localMeta, localSecrets);
+      var result = Manifest.mergeManifests(localSecrets, secrets, hostname,
                                            Manifest.ConflictStrategy.promptUser);
       conflictCount = result.unresolvedConflicts.size: int;
     }
@@ -4721,17 +4767,17 @@ prototype module Tools {
 
     var output = '{';
     output += '"status":"ok",';
-    output += '"manifest_version":' + manifest.metadata.version:string + ',';
-    output += '"identity":"' + manifest.metadata.identity + '",';
-    output += '"generated_on":"' + manifest.metadata.generatedOn + '",';
-    output += '"total_secrets":' + manifest.metadata.totalSecrets:string + ',';
+    output += '"manifest_version":' + metadata.version:string + ',';
+    output += '"identity":"' + escapeJsonString(metadata.identity) + '",';
+    output += '"generated_on":"' + escapeJsonString(metadata.generatedOn) + '",';
+    output += '"total_secrets":' + metadata.totalSecrets:string + ',';
     output += '"synced":' + syncedCount:string + ',';
     output += '"unsynced":' + unsyncedCount:string + ',';
     output += '"conflicts":' + conflictCount:string + ',';
     output += '"host_manifests":' + hostManifests.size:string + ',';
     output += '"age_encryption":' + (if hasAge then "true" else "false") + ',';
-    output += '"last_sync":"' + lastSync + '",';
-    output += '"secrets_dir":"' + secretsDir + '"';
+    output += '"last_sync":"' + escapeJsonString(lastSync) + '",';
+    output += '"secrets_dir":"' + escapeJsonString(secretsDir) + '"';
     output += '}';
 
     return (true, output);

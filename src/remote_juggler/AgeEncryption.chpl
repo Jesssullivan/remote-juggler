@@ -759,11 +759,21 @@ prototype module AgeEncryption {
           continue;
         }
 
-        // Re-encrypt with new recipient
-        const result = ageEncryptValue(plaintext, fullPath, newRecipient);
+        // Re-encrypt with new recipient to temp file, then rename atomically
+        const tmpPath = fullPath + ".tmp";
+        const result = ageEncryptValue(plaintext, tmpPath, newRecipient);
         if result.ok {
-          success += 1;
+          try {
+            rename(tmpPath, fullPath);
+            success += 1;
+          } catch {
+            // Rename failed — clean up temp file and count as failure
+            try { remove(tmpPath); } catch { }
+            failed += 1;
+          }
         } else {
+          // Encryption failed — clean up temp file if it was created
+          try { remove(tmpPath); } catch { }
           failed += 1;
         }
       }
