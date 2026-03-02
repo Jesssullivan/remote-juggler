@@ -199,7 +199,21 @@ kubectl exec deploy/ironclaw-agent -c campaign-runner -- wget -qO- 'http://local
 
 ---
 
-### Phase 2: Read-Edit-Test Loop (Days 6-12)
+### Phase 2: Read-Edit-Test Loop (Days 6-12) -- IN PROGRESS 2026-03-02
+
+**First attempt** (ic-edit-test-1772476570):
+- IronClaw created branch `ic-add-identity-tests` and PR #327 via OpenClaw internal tools
+- BUT: test file was malformed (single `-` char) due to shell escaping failure
+- rj-tool passes Go code as shell args, backticks/quotes/newlines break
+- CI correctly failed: Build gateway, Gateway Tests both red
+- Adapter reported tools=0 (OpenClaw internal calls invisible to adapter)
+- /proof correctly flagged as CONFABULATED (tools=0 from adapter's perspective)
+
+**Diagnosis**: The rj-tool shell wrapper cannot pass multi-line code content.
+`github_update_file content=<go code>` breaks when code contains special chars.
+Need either: (a) base64 encoding, (b) file-based input, or (c) a template approach
+where agent picks a template and fills parameters instead of writing raw code.
+
 **Goal**: IronClaw reads a file, makes a change, and the change passes CI.
 
 **Prerequisites**: Phase 1 GO. Agent can call tools and return real results.

@@ -6,6 +6,8 @@
 #
 # Usage:
 #   rj-tool <tool_name> [key=value ...]
+#   rj-tool <tool_name> --content-file=/tmp/code.go [key=value ...]
+#   rj-tool --json <tool_name> < args.json
 #
 # Examples:
 #   rj-tool juggler_setec_list
@@ -16,6 +18,13 @@
 #   rj-tool github_fetch owner=tinyland-inc repo=ironclaw path=package.json
 #   rj-tool github_list_alerts owner=tinyland-inc repo=ironclaw severity=high
 #   rj-tool github_create_issue owner=tinyland-inc repo=ironclaw title="Bug report" body="Details here"
+#
+# For file write operations with multi-line content:
+#   echo 'package main' > /tmp/code.go
+#   rj-tool github_update_file --content-file=/tmp/code.go owner=tinyland-inc repo=remote-juggler path=main.go message=update branch=my-branch
+#
+# For full JSON input (bypasses all shell escaping):
+#   echo '{"owner":"tinyland-inc","repo":"remote-juggler","path":"main.go","content":"package main\n"}' | rj-tool --json github_update_file
 #
 # Environment:
 #   RJ_GATEWAY_URL  Override gateway URL (default: in-cluster service)
@@ -41,34 +50,84 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+# --- Parse flags ---
+CONTENT_FILE=""
+JSON_MODE=false
+
+if [ "${1:-}" = "--json" ]; then
+  JSON_MODE=true
+  shift
+fi
+
 TOOL="$1"
 shift
 
-# Build JSON arguments object from key=value pairs.
-ARGS="{"
-FIRST=true
-for pair in "$@"; do
-  key="${pair%%=*}"
-  value="${pair#*=}"
-  if [ "$FIRST" = true ]; then
-    FIRST=false
-  else
-    ARGS="${ARGS},"
-  fi
-  # Detect numeric values (don't quote them).
-  case "$value" in
-    ''|*[!0-9]*)
-      # String value — JSON-escape quotes and backslashes.
-      escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
-      ARGS="${ARGS}\"${key}\":\"${escaped}\""
+# Remaining args: strip --content-file from key=value pairs.
+POSITIONAL=""
+for arg in "$@"; do
+  case "$arg" in
+    --content-file=*)
+      CONTENT_FILE="${arg#*=}"
+      ;;
+    --content-file)
+      # next arg is the file path — handled by shifting
       ;;
     *)
-      # Numeric value.
-      ARGS="${ARGS}\"${key}\":${value}"
+      POSITIONAL="${POSITIONAL} ${arg}"
       ;;
   esac
 done
-ARGS="${ARGS}}"
+
+# --- Build JSON arguments ---
+if [ "$JSON_MODE" = true ]; then
+  # Read full JSON object from stdin (bypasses all shell escaping).
+  ARGS=$(cat)
+else
+  # Build JSON arguments object from key=value pairs.
+  ARGS="{"
+  FIRST=true
+  for pair in $POSITIONAL; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    if [ "$FIRST" = true ]; then
+      FIRST=false
+    else
+      ARGS="${ARGS},"
+    fi
+    # Detect numeric values (don't quote them).
+    case "$value" in
+      ''|*[!0-9]*)
+        # String value — JSON-escape quotes and backslashes.
+        escaped=$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        ARGS="${ARGS}\"${key}\":\"${escaped}\""
+        ;;
+      *)
+        # Numeric value.
+        ARGS="${ARGS}\"${key}\":${value}"
+        ;;
+    esac
+  done
+  ARGS="${ARGS}}"
+
+  # If --content-file was given, read the file and inject "content" field.
+  if [ -n "$CONTENT_FILE" ]; then
+    if [ ! -f "$CONTENT_FILE" ]; then
+      echo "ERROR: Content file not found: $CONTENT_FILE" >&2
+      exit 1
+    fi
+    # Read file, JSON-escape it using node/python/sed.
+    if command -v node >/dev/null 2>&1; then
+      ESCAPED_CONTENT=$(node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync('$CONTENT_FILE','utf8')))")
+    elif command -v python3 >/dev/null 2>&1; then
+      ESCAPED_CONTENT=$(python3 -c "import json,sys; print(json.dumps(open('$CONTENT_FILE').read()),end='')")
+    else
+      # Fallback: basic sed escaping (may miss edge cases).
+      ESCAPED_CONTENT=$(printf '"%s"' "$(cat "$CONTENT_FILE" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' '\a' | sed 's/\a/\\n/g')")
+    fi
+    # Inject content field into ARGS JSON.
+    ARGS=$(printf '%s' "$ARGS" | sed "s/}$/,\"content\":${ESCAPED_CONTENT}}/")
+  fi
+fi
 
 # Build JSON-RPC request.
 PAYLOAD="{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"${TOOL}\",\"arguments\":${ARGS}},\"id\":1}"

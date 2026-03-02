@@ -142,7 +142,12 @@ func (b *IronclawBackend) Dispatch(campaign json.RawMessage, runID string) (*Las
 	// Tools — instruct LLM to use exec("rj-tool ...") since OpenClaw ignores MCP servers
 	if len(c.Tools) > 0 {
 		pb.WriteString("## Available Tools\n")
-		pb.WriteString("Call tools via the exec command: `exec(\"/workspace/bin/rj-tool <tool_name> key=value ...\")`\n\n")
+		pb.WriteString("Call tools via the exec command: `exec({\"command\": \"/workspace/bin/rj-tool <tool_name> key=value ...\"})`\n\n")
+		pb.WriteString("**For file write operations** (github_update_file, github_patch_file):\n")
+		pb.WriteString("Shell escaping breaks multi-line code. Use --content-file instead:\n")
+		pb.WriteString("1. First write your code to a temp file: `exec({\"command\": \"cat > /tmp/rj_content.go << 'ENDOFFILE'\\npackage main\\n...\\nENDOFFILE\"})`\n")
+		pb.WriteString("2. Then call rj-tool with --content-file: `exec({\"command\": \"/workspace/bin/rj-tool github_update_file --content-file=/tmp/rj_content.go owner=... repo=... path=... message=... branch=...\"})`\n")
+		pb.WriteString("The --content-file flag reads the file and sends it as the 'content' parameter, avoiding all shell escaping issues.\n\n")
 		for _, tool := range c.Tools {
 			pb.WriteString(fmt.Sprintf("- `%s`\n", tool))
 		}
