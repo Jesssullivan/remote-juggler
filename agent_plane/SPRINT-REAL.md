@@ -347,7 +347,22 @@ After each campaign run, the agent writes a self-critique to its MEMORY.md:
 
 ---
 
-### Phase 4: Skill Library + Capability Compounding (Days 19-25)
+### Phase 4: Skill Library + Capability Compounding (Days 19-25) -- IMPLEMENTED 2026-03-02
+
+**Status**: CODE COMPLETE. Skill library infrastructure deployed. Awaiting live verification (3+ verified skills, agent reuse observed).
+
+**Implementation**:
+- `extractSkill()` + `__skill__`/`__end_skill__` text markers in adapter (same pattern as `__memory__`/`__findings__`)
+- IronClaw: `loadSkills()` loads workspace SKILL.md files + dynamic skills from Setec injected into prompt
+- TinyClaw: Dynamic skills from Setec injected alongside existing static workspace skills
+- Collector: `GetAgentSkills()`/`StoreAgentSkill()` with upsert-by-name (parse `### Skill:` headers, replace or append)
+- Skills stored at `remotejuggler/agents/{agent}/skills` in Setec
+- Scheduler: loads skills pre-dispatch, stores new skills post-dispatch
+- 3 skill-building campaigns: `ic-skill-file-analysis`, `ic-skill-test-writer`, `ic-skill-code-review`
+- 11 new unit tests (49 adapter total, 109 runner total), all passing
+
+**Key files**: `deploy/adapters/adapter.go` (extractSkill), `deploy/adapters/ironclaw.go` (loadSkills, skills injection), `deploy/adapters/tinyclaw.go` (dynamic skills), `test/campaigns/runner/collector.go` (GetAgentSkills, StoreAgentSkill, upsertSkill), `test/campaigns/runner/scheduler.go` (pre/post skill hooks)
+
 **Goal**: Agent builds reusable skills that compound over time.
 
 **Prerequisites**: Phase 3 GO. Agent has persistent memory and improving performance.
