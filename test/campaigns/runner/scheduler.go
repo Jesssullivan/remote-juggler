@@ -267,6 +267,9 @@ func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result 
 		if err := s.collector.StoreResult(ctx, campaign, result); err != nil {
 			log.Printf("campaign %s: failed to store result: %v", campaign.ID, err)
 		}
+		if err := s.collector.StoreRunHistory(ctx, campaign, result); err != nil {
+			log.Printf("campaign %s: failed to store run history: %v", campaign.ID, err)
+		}
 	}
 	if s.feedback != nil && len(result.Findings) > 0 {
 		// Load previous findings for issue-closing comparison.
@@ -345,6 +348,9 @@ func (s *Scheduler) dependenciesMet(campaign *Campaign) bool {
 	}
 	return true
 }
+
+// GetCollector returns the collector for use by the API server.
+func (s *Scheduler) GetCollector() *Collector { return s.collector }
 
 // MarkCompleted records a campaign ID as having completed successfully.
 // Useful for external triggers (webhooks, manual) that bypass the scheduler.

@@ -379,6 +379,12 @@
       "enabled": true,
       "lastRun": null,
       "lastResult": null
+    },
+    "tc-self-improve": {
+      "file": "tinyclaw/tc-self-improve.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
     }
   }
 }

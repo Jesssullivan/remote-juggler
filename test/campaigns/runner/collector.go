@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"strings"
+	"time"
 )
 
 // Collector stores campaign results in Setec via rj-gateway MCP tool calls.
@@ -266,4 +268,190 @@ func splitSkillSections(text string) []string {
 		}
 	}
 	return sections
+}
+
+// maxHistoryEntries is the rolling window size for run history.
+const maxHistoryEntries = 10
+
+// HistoryEntry is a compact record for the rolling history array.
+type HistoryEntry struct {
+	RunID      string  `json:"run_id"`
+	Status     string  `json:"status"`
+	ToolCalls  int     `json:"tool_calls"`
+	TokensUsed int     `json:"tokens_used,omitempty"`
+	DurationS  float64 `json:"duration_s"`
+	Timestamp  string  `json:"timestamp"`
+}
+
+// StoreRunHistory appends a HistoryEntry to the rolling array at {setecKey}/history.
+// Keeps only the last maxHistoryEntries entries to bound storage.
+func (c *Collector) StoreRunHistory(ctx context.Context, campaign *Campaign, result *CampaignResult) error {
+	key := campaign.Outputs.SetecKey + "/history"
+
+	// Build the new entry.
+	entry := HistoryEntry{
+		RunID:      result.RunID,
+		Status:     result.Status,
+		ToolCalls:  result.ToolCalls,
+		TokensUsed: result.TokensUsed,
+		Timestamp:  result.FinishedAt,
+	}
+
+	// Compute duration from start/finish times.
+	if result.StartedAt != "" && result.FinishedAt != "" {
+		start, err1 := time.Parse(time.RFC3339, result.StartedAt)
+		end, err2 := time.Parse(time.RFC3339, result.FinishedAt)
+		if err1 == nil && err2 == nil {
+			entry.DurationS = math.Round(end.Sub(start).Seconds()*100) / 100
+		}
+	}
+
+	// Read existing history.
+	existing, _ := c.GetRunHistory(ctx, campaign.Outputs.SetecKey)
+
+	// Append and trim to rolling window.
+	existing = append(existing, entry)
+	if len(existing) > maxHistoryEntries {
+		existing = existing[len(existing)-maxHistoryEntries:]
+	}
+
+	historyJSON, err := json.Marshal(existing)
+	if err != nil {
+		return fmt.Errorf("marshal history: %w", err)
+	}
+
+	_, err = c.dispatcher.callTool(ctx, "juggler_setec_put", map[string]any{
+		"name":  key,
+		"value": string(historyJSON),
+	})
+	if err != nil {
+		return fmt.Errorf("setec put %s: %w", key, err)
+	}
+
+	log.Printf("campaign %s: run history stored (%d entries)", campaign.ID, len(existing))
+	return nil
+}
+
+// GetRunHistory retrieves the rolling history array from Setec.
+func (c *Collector) GetRunHistory(ctx context.Context, setecKey string) ([]HistoryEntry, error) {
+	key := setecKey + "/history"
+	resp, err := c.dispatcher.callTool(ctx, "juggler_setec_get", map[string]any{
+		"name": key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("setec get %s: %w", key, err)
+	}
+
+	// Parse the MCP response to get the stored JSON.
+	var mcpResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(resp, &mcpResult); err != nil || len(mcpResult.Content) == 0 {
+		return nil, fmt.Errorf("parse history response: no content")
+	}
+
+	var entries []HistoryEntry
+	if err := json.Unmarshal([]byte(mcpResult.Content[0].Text), &entries); err != nil {
+		return nil, fmt.Errorf("parse history entries: %w", err)
+	}
+
+	return entries, nil
+}
+
+// EvaluationResult is the system-computed before/after comparison.
+type EvaluationResult struct {
+	CampaignID        string  `json:"campaign_id"`
+	SplitAt           string  `json:"split_at"`
+	BeforeRuns        int     `json:"before_runs"`
+	AfterRuns         int     `json:"after_runs"`
+	SuccessRateDelta  float64 `json:"success_rate_delta"`
+	AvgToolCallsDelta float64 `json:"avg_tool_calls_delta"`
+	AvgDurationDelta  float64 `json:"avg_duration_delta_s"`
+	Improved          bool    `json:"improved"`
+}
+
+// EvaluateImprovement splits history at a timestamp and computes before/after deltas.
+// Returns an error if there are no entries after the split point.
+func (c *Collector) EvaluateImprovement(ctx context.Context, setecKey, since string) (*EvaluationResult, error) {
+	entries, err := c.GetRunHistory(ctx, setecKey)
+	if err != nil {
+		return nil, fmt.Errorf("get history: %w", err)
+	}
+
+	splitTime, err := time.Parse(time.RFC3339, since)
+	if err != nil {
+		return nil, fmt.Errorf("parse since timestamp: %w", err)
+	}
+
+	var before, after []HistoryEntry
+	for _, e := range entries {
+		t, err := time.Parse(time.RFC3339, e.Timestamp)
+		if err != nil {
+			continue
+		}
+		if t.Before(splitTime) {
+			before = append(before, e)
+		} else {
+			after = append(after, e)
+		}
+	}
+
+	if len(after) == 0 {
+		return nil, fmt.Errorf("no entries after split point %s", since)
+	}
+	if len(before) == 0 {
+		return nil, fmt.Errorf("no entries before split point %s", since)
+	}
+
+	result := &EvaluationResult{
+		SplitAt:           since,
+		BeforeRuns:        len(before),
+		AfterRuns:         len(after),
+		SuccessRateDelta:  successRate(after) - successRate(before),
+		AvgToolCallsDelta: avgToolCalls(after) - avgToolCalls(before),
+		AvgDurationDelta:  avgDuration(after) - avgDuration(before),
+	}
+	result.Improved = result.SuccessRateDelta > 0
+
+	return result, nil
+}
+
+// successRate computes the fraction of entries with status "success".
+func successRate(entries []HistoryEntry) float64 {
+	if len(entries) == 0 {
+		return 0
+	}
+	successes := 0
+	for _, e := range entries {
+		if e.Status == "success" {
+			successes++
+		}
+	}
+	return float64(successes) / float64(len(entries))
+}
+
+// avgToolCalls computes the mean tool call count across entries.
+func avgToolCalls(entries []HistoryEntry) float64 {
+	if len(entries) == 0 {
+		return 0
+	}
+	total := 0
+	for _, e := range entries {
+		total += e.ToolCalls
+	}
+	return float64(total) / float64(len(entries))
+}
+
+// avgDuration computes the mean duration in seconds across entries.
+func avgDuration(entries []HistoryEntry) float64 {
+	if len(entries) == 0 {
+		return 0
+	}
+	total := 0.0
+	for _, e := range entries {
+		total += e.DurationS
+	}
+	return total / float64(len(entries))
 }

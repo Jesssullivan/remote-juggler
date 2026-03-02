@@ -425,10 +425,10 @@ Skills are verified, reusable procedures the agent has proven it can execute:
 
 ---
 
-### Phase 5: Multi-Agent Coordination (Days 26-32) — IMPLEMENTED 2026-03-02
+### Phase 5: Multi-Agent Coordination (Days 26-32) — GO 2026-03-02
 **Goal**: Two agents collaborate on a task, with verified handoff.
 
-**Status**: Code complete. TinyClaw agentic dispatch (direct Anthropic API + gateway tool execution) implemented in adapter. Cross-agent handoff campaigns created (IronClaw produces finding → Setec → TinyClaw verifies). 55 adapter tests passing (6 new). Awaiting deployment + live verification.
+**Status**: VERIFIED LIVE. TinyClaw agentic dispatch deployed (adapter:sha-4b3f171). Proof-of-life: TinyClaw called github_fetch (gateway audit: caller=tinyclaw, allowed=true, 1 tool call, 2 iterations, 10K tokens). Cross-agent handoff: IronClaw produced finding (portal.go JSON encoding), TinyClaw verified via juggler_setec_get + github_fetch (2 tool calls, 3 iterations), confirmed finding with real code citation.
 
 **Prerequisites**: Phase 4 GO. At least one agent has verified skills and persistent memory.
 
@@ -488,8 +488,18 @@ Without Phases 1-4, there's nothing real to coordinate.
 
 ---
 
-### Phase 6: Self-Improvement Loop (Days 33-40)
+### Phase 6: Self-Improvement Loop (Days 33-40) — IMPLEMENTED 2026-03-02
 **Goal**: Agent improves its own configuration, and the improvement is measurable.
+
+**Status**: CODE COMPLETE. Run history, `/evaluate` endpoint, and `tc-self-improve` campaign deployed. 12 new tests (135 total runner tests, all pass). Awaiting live verification: build history via tc-proof-of-life runs, then trigger tc-self-improve.
+
+**Implementation**:
+- `HistoryEntry` type + `StoreRunHistory()` appends compact records to rolling 10-entry array in Setec at `{setecKey}/history`
+- `GetRunHistory()` retrieves the history array; `EvaluateImprovement()` splits at a timestamp and computes before/after deltas (success rate, avg tool calls, avg duration)
+- Scheduler auto-stores run history after every campaign result (wired into `storeResult()`)
+- `/evaluate?campaign=ID&since=RFC3339` API endpoint returns system-computed `EvaluationResult` with `improved` flag
+- `tc-self-improve` campaign: TinyClaw reads its own performance history, analyzes trends, proposes campaign improvement via PR, reports in `__findings__`
+- Key files: `collector.go` (HistoryEntry, StoreRunHistory, GetRunHistory, EvaluateImprovement, helpers), `scheduler.go` (storeResult hook, GetCollector), `api.go` (/evaluate handler), `tc-self-improve.json` (campaign def)
 
 **Prerequisites**: Phase 5 GO (or Phase 4 GO if single-agent pivot).
 

@@ -1,0 +1,51 @@
+{
+  "id": "tc-self-improve",
+  "name": "TinyClaw Self-Improvement",
+  "description": "Reads own performance history, identifies weakness, proposes campaign improvement via PR",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "Read your performance history from Setec key 'remotejuggler/campaigns/tc-proof-of-life/history'",
+    "Analyze trends: success rate, tool call efficiency, duration",
+    "Identify ONE specific improvement to the tc-proof-of-life campaign",
+    "Fetch the current campaign JSON from github (test/campaigns/tinyclaw/tc-proof-of-life.json)",
+    "Create a branch, patch the campaign JSON with your improvement, create a PR",
+    "Report your proposed change and expected improvement in __findings__",
+    "Write a __memory__ reflection about what you changed and why"
+  ],
+  "tools": [
+    "juggler_setec_get",
+    "github_fetch",
+    "github_patch_file",
+    "github_create_pr"
+  ],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-self-improve"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": false
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false
+  },
+  "metrics": {
+    "successCriteria": "PR created with campaign improvement",
+    "kpis": [
+      "tool_calls",
+      "pr_created"
+    ]
+  }
+}

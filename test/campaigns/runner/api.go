@@ -19,6 +19,7 @@ import (
 // Runs alongside the scheduler in the campaign runner sidecar.
 type APIServer struct {
 	scheduler *Scheduler
+	collector *Collector
 	registry  map[string]*Campaign
 
 	// WebhookSecret is the HMAC-SHA256 secret for validating incoming
@@ -33,6 +34,7 @@ type APIServer struct {
 func NewAPIServer(scheduler *Scheduler, registry map[string]*Campaign) *APIServer {
 	return &APIServer{
 		scheduler:   scheduler,
+		collector:   scheduler.GetCollector(),
 		registry:    registry,
 		lastResults: make(map[string]*CampaignResult),
 	}
@@ -47,6 +49,7 @@ func (a *APIServer) ListenAndServe(addr string) error {
 	mux.HandleFunc("/campaigns", a.handleCampaigns)
 	mux.HandleFunc("/webhook", a.handleWebhook)
 	mux.HandleFunc("/proof", a.handleProof)
+	mux.HandleFunc("/evaluate", a.handleEvaluate)
 
 	log.Printf("api server listening on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -376,6 +379,58 @@ func (a *APIServer) handleProof(w http.ResponseWriter, r *http.Request) {
 		"suspicious":   suspicious,
 		"honest":       len(entries) - confabulated - suspicious,
 	})
+}
+
+// handleEvaluate computes before/after metrics for a campaign.
+// GET /evaluate?campaign=ID&since=RFC3339_TIMESTAMP
+func (a *APIServer) handleEvaluate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	campaignID := r.URL.Query().Get("campaign")
+	since := r.URL.Query().Get("since")
+
+	if campaignID == "" || since == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "missing required query parameters: campaign, since",
+		})
+		return
+	}
+
+	// Look up campaign in registry to get setecKey.
+	campaign, ok := a.registry[campaignID]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":       "campaign not found",
+			"campaign_id": campaignID,
+		})
+		return
+	}
+
+	if a.collector == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "collector not configured",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	result, err := a.collector.EvaluateImprovement(ctx, campaign.Outputs.SetecKey, since)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":       err.Error(),
+			"campaign_id": campaignID,
+		})
+		return
+	}
+
+	result.CampaignID = campaignID
+	json.NewEncoder(w).Encode(result)
 }
 
 // buildProofEntry analyzes a CampaignResult and flags integrity issues.
