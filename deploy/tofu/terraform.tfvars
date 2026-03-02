@@ -27,13 +27,13 @@ hexstrike_model = "claude-opus-4-20250514"
 # renovate: image
 gateway_image         = "ghcr.io/tinyland-inc/remote-juggler/gateway:sha-d4b161c"
 # renovate: image
-campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-29cc430"
+campaign_runner_image = "ghcr.io/tinyland-inc/remote-juggler/campaign-runner:sha-4b3f171"
 # renovate: image
 setec_image           = "ghcr.io/tinyland-inc/remote-juggler/setec:sha-d4b161c"
 # renovate: image
 chapel_binary_image   = "ghcr.io/tinyland-inc/remote-juggler:sha-d4b161c"
 # renovate: image
-adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-29cc430"
+adapter_image         = "ghcr.io/tinyland-inc/remote-juggler/adapter:sha-4b3f171"
 
 # Agent images (from individual repos)
 # renovate: image
