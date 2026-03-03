@@ -4831,7 +4831,7 @@ prototype module Tools {
       // Split into timestamp and action
       var timestamp = "";
       var action = entry;
-      const spaceIdx = entry.find(" ");
+      const spaceIdx = entry.find(" "):int;
       if spaceIdx > 0 {
         timestamp = entry[0..#spaceIdx];
         action = entry[spaceIdx + 1..];
