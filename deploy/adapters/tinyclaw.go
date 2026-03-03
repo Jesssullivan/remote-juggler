@@ -331,7 +331,7 @@ func (b *TinyclawBackend) effectiveMaxIterations() int {
 	if b.maxToolIterations > 0 {
 		return b.maxToolIterations
 	}
-	return 10
+	return 25
 }
 
 // --- Anthropic Messages API types ---
@@ -407,13 +407,24 @@ func (b *TinyclawBackend) dispatchAgentic(campaign json.RawMessage, runID string
 		return nil, fmt.Errorf("parse campaign: %w", err)
 	}
 
-	// Build system prompt (same enriched context as text dispatch).
+	// Build system prompt with agent identity and capabilities.
 	var pb strings.Builder
-	pb.WriteString(fmt.Sprintf("# Campaign: %s\n", c.Name))
+	pb.WriteString("# You are TinyClaw\n")
+	pb.WriteString("An autonomous agent that maintains the RemoteJuggler project.\n")
+	pb.WriteString("RemoteJuggler is a git identity management tool — it helps developers ")
+	pb.WriteString("manage multiple git identities (SSH keys, GPG signing, provider credentials) ")
+	pb.WriteString("across GitHub, GitLab, and Bitbucket.\n\n")
+	pb.WriteString("## Your Capabilities\n")
+	pb.WriteString("- **Web Research**: Search the web (`web_search`) and fetch documentation/papers/changelogs (`web_fetch`)\n")
+	pb.WriteString("- **GitHub Operations**: Read files, create branches, patch files, create PRs and issues, manage discussions\n")
+	pb.WriteString("- **Identity Management**: Use RemoteJuggler's own tools (e.g. `juggler_resolve_composite`, `juggler_audit_log`)\n")
+	pb.WriteString("- **Secret Management**: Read/write to Setec secret store (`juggler_setec_get/put/list`)\n")
+	pb.WriteString("- **Campaign Orchestration**: Trigger and monitor other agent campaigns\n\n")
+	pb.WriteString("## Attribution\n")
+	pb.WriteString("You are rj-agent-bot (GitHub App ID 2945224). Your commits and PRs are attributed to you.\n\n")
+
+	pb.WriteString(fmt.Sprintf("## Current Task: %s\n", c.Name))
 	pb.WriteString(fmt.Sprintf("**Run ID**: %s\n", runID))
-	if c.Description != "" {
-		pb.WriteString(fmt.Sprintf("**Purpose**: %s\n", c.Description))
-	}
 	pb.WriteString("\n")
 
 	if len(c.Targets) > 0 {
@@ -456,25 +467,36 @@ func (b *TinyclawBackend) dispatchAgentic(campaign json.RawMessage, runID string
 
 	systemPrompt := pb.String()
 
-	// Build user message with process steps and findings instruction.
+	// Build user message: goal-based, not step-scripted.
 	var userMsg strings.Builder
-	userMsg.WriteString("## Process\n")
-	for i, step := range c.Process {
-		userMsg.WriteString(fmt.Sprintf("%d. %s\n", i+1, step))
+	if c.Description != "" {
+		userMsg.WriteString("## Task\n")
+		userMsg.WriteString(c.Description)
+		userMsg.WriteString("\n\n")
 	}
+	if len(c.Process) > 0 {
+		userMsg.WriteString("## Context & Guidance\n")
+		for _, hint := range c.Process {
+			userMsg.WriteString("- " + hint + "\n")
+		}
+		userMsg.WriteString("\n")
+	}
+	userMsg.WriteString("Use whatever tools you need to accomplish this task. ")
+	userMsg.WriteString("You have access to web search, GitHub operations, identity management, and secret storage.\n")
 	if c.Metrics.SuccessCriteria != "" {
 		userMsg.WriteString(fmt.Sprintf("\n## Success Criteria\n%s\n", c.Metrics.SuccessCriteria))
 	}
 	userMsg.WriteString(findingsInstruction)
 
-	// Fetch gateway tools in Anthropic format, filtered to campaign's tool list.
-	tools, err := fetchGatewayToolsAnthropic(b.httpClient, b.gatewayURL, c.Tools)
+	// Fetch ALL gateway tools in Anthropic format (no filtering).
+	// The agent decides which tools to use based on the task context.
+	tools, err := fetchGatewayToolsAnthropic(b.httpClient, b.gatewayURL, nil)
 	if err != nil {
 		log.Printf("tinyclaw agentic: failed to fetch gateway tools: %v", err)
 		// Proceed without tools — the LLM will respond with text only.
 		tools = nil
 	} else {
-		log.Printf("tinyclaw agentic: loaded %d tools from gateway (filtered from %v)", len(tools), c.Tools)
+		log.Printf("tinyclaw agentic: loaded %d tools from gateway (all available)", len(tools))
 	}
 
 	// Select model: campaign override > adapter config > default.

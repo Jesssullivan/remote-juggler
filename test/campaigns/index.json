@@ -322,7 +322,7 @@
     },
     "ic-proof-of-life": {
       "file": "openclaw/ic-proof-of-life.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
@@ -364,7 +364,7 @@
     },
     "tc-proof-of-life": {
       "file": "tinyclaw/tc-proof-of-life.json",
-      "enabled": true,
+      "enabled": false,
       "lastRun": null,
       "lastResult": null
     },
@@ -382,6 +382,24 @@
     },
     "tc-self-improve": {
       "file": "tinyclaw/tc-self-improve.json",
+      "enabled": false,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "tc-research-peers": {
+      "file": "tinyclaw/tc-research-peers.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "tc-dep-update": {
+      "file": "tinyclaw/tc-dep-update.json",
+      "enabled": true,
+      "lastRun": null,
+      "lastResult": null
+    },
+    "tc-identity-demo": {
+      "file": "tinyclaw/tc-identity-demo.json",
       "enabled": true,
       "lastRun": null,
       "lastResult": null

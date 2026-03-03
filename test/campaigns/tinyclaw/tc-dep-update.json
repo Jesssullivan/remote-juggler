@@ -1,0 +1,44 @@
+{
+  "id": "tc-dep-update",
+  "name": "Dependency Update Check",
+  "description": "Check RemoteJuggler's Go dependencies for available updates. Search the web for changelogs of any outdated deps. If updates are safe (no breaking changes), create a PR bumping them.",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "schedule": "0 8 * * 3"
+  },
+  "process": [
+    "Read go.mod files via github_fetch for gateway/, deploy/adapters/, test/campaigns/runner/",
+    "Use web_search to find latest versions of key dependencies (especially tailscale.com)",
+    "Use web_fetch to read changelogs or release notes if updates are available",
+    "If updates are safe, create a branch and PR with version bumps"
+  ],
+  "tools": [],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-dep-update"
+  },
+  "guardrails": {
+    "maxDuration": "10m",
+    "readOnly": false
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false
+  },
+  "metrics": {
+    "successCriteria": "Dependency audit completed with web research, PR created if updates found",
+    "kpis": [
+      "tool_calls",
+      "web_searches",
+      "pr_created"
+    ]
+  }
+}

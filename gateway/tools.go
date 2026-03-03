@@ -528,8 +528,49 @@ func gatewayTools() []json.RawMessage {
 			},
 		},
 	}
+	// Web research tools.
+	webTools := []map[string]any{
+		{
+			"name":        "web_search",
+			"description": "Search the web using Brave Search API. Returns titles, URLs, and snippets for research, documentation lookup, and competitive analysis.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{
+						"type":        "string",
+						"description": "Search query",
+					},
+					"count": map[string]any{
+						"type":        "integer",
+						"description": "Number of results (1-20, default 5)",
+					},
+				},
+				"required": []string{"query"},
+			},
+		},
+		{
+			"name":        "web_fetch",
+			"description": "Fetch a URL and return its content as plain text. Useful for reading documentation, papers, changelogs, and web pages.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"url": map[string]any{
+						"type":        "string",
+						"description": "The URL to fetch",
+					},
+					"max_length": map[string]any{
+						"type":        "integer",
+						"description": "Max response length in chars (default 10000)",
+					},
+				},
+				"required": []string{"url"},
+			},
+		},
+	}
+
 	tools = append(tools, githubTools...)
 	tools = append(tools, campaignTools...)
+	tools = append(tools, webTools...)
 
 	var raw []json.RawMessage
 	for _, t := range tools {

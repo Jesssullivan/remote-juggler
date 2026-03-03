@@ -1,0 +1,45 @@
+{
+  "id": "tc-identity-demo",
+  "name": "Identity Management Demonstration",
+  "description": "Use RemoteJuggler's own identity management tools to demonstrate the product. List available identities, detect the identity for the remote-juggler repo, check GPG signing status, audit recent credential access, and write a status report to a GitHub Discussion showing RemoteJuggler working on itself.",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "event": "manual"
+  },
+  "process": [
+    "This task demonstrates RemoteJuggler's core value: multi-identity git management",
+    "Use juggler_setec_list to see what secrets are available",
+    "Use juggler_audit_log to review recent credential access patterns",
+    "Use juggler_resolve_composite to resolve a credential from multiple sources",
+    "Write a GitHub Discussion post with the actual tool outputs showing the system in action"
+  ],
+  "tools": [],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-identity-demo"
+  },
+  "guardrails": {
+    "maxDuration": "5m",
+    "readOnly": true
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false
+  },
+  "metrics": {
+    "successCriteria": "Used 3+ identity/secret management tools with real output in a Discussion post",
+    "kpis": [
+      "tool_calls",
+      "identity_tools_used",
+      "discussion_created"
+    ]
+  }
+}

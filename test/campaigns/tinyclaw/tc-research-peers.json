@@ -1,0 +1,45 @@
+{
+  "id": "tc-research-peers",
+  "name": "Peer Project Research",
+  "description": "Research a peer project in the git identity management space. Search the web for recent releases, features, and documentation. Compare their approach to RemoteJuggler's. Write findings as a GitHub Discussion post with specific feature gaps or integration opportunities.",
+  "agent": "tinyclaw",
+  "mode": "autonomous",
+  "trigger": {
+    "schedule": "0 6 * * 1"
+  },
+  "process": [
+    "Peer projects to rotate through: git-identity-manager, gitswitch, git-users, onefetch, gitmux, git-credential-manager",
+    "Use web_search to find recent activity, releases, and documentation for one peer project",
+    "Use web_fetch to read specific documentation pages or changelogs",
+    "Use github_fetch to read RemoteJuggler's equivalent code for comparison",
+    "Post findings as a GitHub Discussion in tinyland-inc/remote-juggler with actionable recommendations"
+  ],
+  "tools": [],
+  "targets": [
+    {
+      "forge": "github",
+      "org": "tinyland-inc",
+      "repo": "remote-juggler",
+      "branch": "main"
+    }
+  ],
+  "outputs": {
+    "setecKey": "remotejuggler/campaigns/tc-research-peers"
+  },
+  "guardrails": {
+    "maxDuration": "10m",
+    "readOnly": false
+  },
+  "feedback": {
+    "createIssues": false,
+    "createPRs": false
+  },
+  "metrics": {
+    "successCriteria": "Discussion created with real web research citations (URLs that resolve)",
+    "kpis": [
+      "tool_calls",
+      "web_searches",
+      "discussion_created"
+    ]
+  }
+}

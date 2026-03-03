@@ -38,6 +38,7 @@ type MCPProxy struct {
 	meterStore *MeterStore
 	github     *GitHubToolHandler
 	campaigns  *CampaignClient
+	web        *WebToolHandler
 }
 
 // NewMCPProxy creates a proxy for the given Chapel binary.
@@ -231,6 +232,8 @@ var gatewayToolNames = map[string]bool{
 	"github_discussion_search":  true,
 	"github_discussion_reply":   true,
 	"github_discussion_label":   true,
+	"web_search":                true,
+	"web_fetch":                 true,
 }
 
 // HandleRPC handles POST /mcp JSON-RPC requests.
@@ -646,6 +649,32 @@ func (p *MCPProxy) handleGatewayTool(id json.RawMessage, tool string, args json.
 				Query:   a.Name,
 				Allowed: err == nil,
 				Reason:  "urgency=" + a.Urgency,
+			})
+		}
+
+	case "web_search":
+		result, err = p.web.WebSearch(ctx, args)
+		if p.audit != nil {
+			var a struct{ Query string }
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "web_search",
+				Query:   a.Query,
+				Allowed: err == nil,
+			})
+		}
+
+	case "web_fetch":
+		result, err = p.web.WebFetch(ctx, args)
+		if p.audit != nil {
+			var a struct{ URL string }
+			json.Unmarshal(args, &a)
+			p.audit.Log(AuditEntry{
+				Caller:  caller,
+				Action:  "web_fetch",
+				Query:   a.URL,
+				Allowed: err == nil,
 			})
 		}
 

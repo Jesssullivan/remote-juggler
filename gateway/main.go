@@ -118,6 +118,7 @@ func main() {
 	proxy.meterStore = meterStore
 	proxy.github = githubTools
 	proxy.campaigns = NewCampaignClient(cfg.CampaignRunnerURL)
+	proxy.web = NewWebToolHandler(setec)
 
 	// Start background polling for configured secrets.
 	if setec.Configured() && len(cfg.SetecSecrets) > 0 {
