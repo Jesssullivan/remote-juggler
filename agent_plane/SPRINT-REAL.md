@@ -488,10 +488,15 @@ Without Phases 1-4, there's nothing real to coordinate.
 
 ---
 
-### Phase 6: Self-Improvement Loop (Days 33-40) — IMPLEMENTED 2026-03-02
+### Phase 6: Self-Improvement Loop (Days 33-40) — GO 2026-03-03
 **Goal**: Agent improves its own configuration, and the improvement is measurable.
 
-**Status**: CODE COMPLETE. Run history, `/evaluate` endpoint, and `tc-self-improve` campaign deployed. 12 new tests (135 total runner tests, all pass). Awaiting live verification: build history via tc-proof-of-life runs, then trigger tc-self-improve.
+**Status**: VERIFIED LIVE. TinyClaw created PR #442 (tc-self-improve-metrics-persistence) proposing a meaningful campaign improvement to tc-proof-of-life: added `juggler_setec_put` tool and a process step to persist performance metrics for trend analysis. The agent identified the gap (no history persistence = no improvement measurement), proposed a targeted fix (+3/-1 lines), and created a well-documented PR via `github_patch_file` (auto-branch-creation) + `github_create_pr`.
+
+**Key fixes during verification**:
+- Gateway `github_patch_file` now auto-creates branches when target branch doesn't exist (agents consistently skipped `github_create_branch`)
+- Agent kept dropping `remotejuggler/` prefix on Setec keys despite explicit instructions (Sonnet behavior)
+- Earlier runs committed directly to main (5 commits to tc-proof-of-life.json) before branch auto-creation was added
 
 **Implementation**:
 - `HistoryEntry` type + `StoreRunHistory()` appends compact records to rolling 10-entry array in Setec at `{setecKey}/history`
