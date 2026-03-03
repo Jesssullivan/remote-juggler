@@ -184,7 +184,8 @@ prototype module Manifest {
         var line: string;
         if p.stdout.readLine(line) {
           // Output: "<hex>  -\n"
-          const hex = line.strip().split(" ")[0];
+          const parts = line.strip().split(" ");
+          const hex = parts[0];
           return "sha256:" + hex;
         }
       }
