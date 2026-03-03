@@ -125,19 +125,15 @@ func (b *TinyclawBackend) Health() error {
 }
 
 // Dispatch sends a campaign to TinyClaw via POST /api/dispatch.
-// If an Anthropic API key is configured and the campaign declares tools,
-// dispatch uses the agentic loop (direct Anthropic API + gateway tool execution).
+// If an Anthropic API key is configured, dispatch uses the agentic loop
+// (direct Anthropic API + gateway tool execution with ALL available tools).
 // Otherwise, falls through to PicoClaw's text-only dispatch.
 func (b *TinyclawBackend) Dispatch(campaign json.RawMessage, runID string) (*LastResult, error) {
-	// Check if agentic dispatch is available: need API key + campaign must have tools.
+	// Agentic dispatch: API key is the only requirement.
+	// All gateway tools are available to the agent (no filtering).
 	if b.apiKey != "" {
-		var peek struct {
-			Tools []string `json:"tools"`
-		}
-		if err := json.Unmarshal(campaign, &peek); err == nil && len(peek.Tools) > 0 {
-			log.Printf("tinyclaw: agentic dispatch (tools=%d, model=%s)", len(peek.Tools), b.effectiveModel())
-			return b.dispatchAgentic(campaign, runID)
-		}
+		log.Printf("tinyclaw: agentic dispatch (model=%s)", b.effectiveModel())
+		return b.dispatchAgentic(campaign, runID)
 	}
 
 	var c struct {
