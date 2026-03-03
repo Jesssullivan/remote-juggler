@@ -14,13 +14,13 @@ func TestSanitizeString_SecretPatterns(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"token is ghp_abc123def456", "token is [REDACTED]abc123def456"},
-		{"key: sk-ant-api03-xyz", "key: [REDACTED]ant-api03-xyz"},
-		{"AKIAIOSFODNN7EXAMPLE", "[REDACTED]OSFODNN7EXAMPLE"},
-		{"-----BEGIN RSA PRIVATE KEY-----", "[REDACTED] RSA PRIVATE KEY-----"},
+		{"token is ghp_abc123def456", "token is [REDACTED]"},
+		{"key: sk-ant-api03-xyz", "key: [REDACTED]"},
+		{"AKIAIOSFODNN7EXAMPLE", "[REDACTED]"},
+		{"-----BEGIN RSA PRIVATE KEY-----\ndata\n-----END RSA PRIVATE KEY-----", "[REDACTED]"},
 		{"safe string with no secrets", "safe string with no secrets"},
-		{"ghs_token123 and gho_other456", "[REDACTED]token123 and [REDACTED]other456"},
-		{"github_pat_11ABC secret", "[REDACTED]11ABC secret"},
+		{"ghs_token123 and gho_other456", "[REDACTED] and [REDACTED]"},
+		{"github_pat_11ABC secret", "[REDACTED] secret"},
 	}
 
 	for _, tt := range tests {
@@ -105,6 +105,64 @@ func TestSanitizeValue_HighEntropy(t *testing.T) {
 	// Short strings should not be entropy-filtered.
 	if sanitizeValue("ok") != "ok" {
 		t.Error("short string should pass through")
+	}
+}
+
+func TestSanitizeResult(t *testing.T) {
+	result := &CampaignResult{
+		Error: "failed to auth with ghp_abc123secrettoken",
+		Findings: []Finding{
+			{
+				Title: "Found credential ghp_leakedtoken in config",
+				Body:  "The token sk-ant-api03-secretkey was exposed via juggler_resolve_composite output",
+				RemediationHints: map[string]string{
+					"file":    "config.go",
+					"find":    "token := \"ghp_realtoken123\"",
+					"replace": "token := os.Getenv(\"GITHUB_TOKEN\")",
+				},
+			},
+		},
+		ToolTrace: []ToolTraceEntry{
+			{Tool: "juggler_resolve_composite", Summary: "Error: secret not found at setec-1.taila4c78d.ts.net:8443"},
+		},
+		KPIs: map[string]any{
+			"tool_calls": 5,
+			"api_key":    "sk-ant-api03-verylongsecretkey",
+		},
+	}
+
+	sanitizeResult(result)
+
+	// Error field should be sanitized.
+	if strings.Contains(result.Error, "ghp_") {
+		t.Errorf("Error field still contains secret prefix: %s", result.Error)
+	}
+
+	// Finding title and body should be sanitized.
+	f := result.Findings[0]
+	if strings.Contains(f.Title, "ghp_") {
+		t.Errorf("Finding title still contains secret: %s", f.Title)
+	}
+	if strings.Contains(f.Body, "sk-ant-") {
+		t.Errorf("Finding body still contains secret: %s", f.Body)
+	}
+
+	// Remediation hints should be sanitized.
+	if strings.Contains(f.RemediationHints["find"], "ghp_") {
+		t.Errorf("Remediation hint still contains secret: %s", f.RemediationHints["find"])
+	}
+
+	// Tool trace should have internal URLs sanitized.
+	if strings.Contains(result.ToolTrace[0].Summary, ".ts.net") {
+		t.Errorf("Tool trace still contains internal URL: %s", result.ToolTrace[0].Summary)
+	}
+
+	// Numeric KPIs should pass through, secret-like strings should be redacted.
+	if result.KPIs["tool_calls"] != 5 {
+		t.Errorf("Numeric KPI was modified: %v", result.KPIs["tool_calls"])
+	}
+	if result.KPIs["api_key"] != "[REDACTED]" {
+		t.Errorf("Secret KPI was not redacted: %v", result.KPIs["api_key"])
 	}
 }
 

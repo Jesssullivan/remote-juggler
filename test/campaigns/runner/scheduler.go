@@ -260,9 +260,34 @@ killSwitchCleared:
 	return nil
 }
 
+// sanitizeResult redacts secrets and internal URLs from all string fields in a
+// CampaignResult before it reaches any output path (Setec, GitHub issues/PRs,
+// Discussions). This is a defense-in-depth measure — agents may include raw
+// secret values from tool outputs (e.g. juggler_resolve_composite) in their
+// findings or reflections.
+func sanitizeResult(result *CampaignResult) {
+	result.Error = sanitizeString(result.Error)
+	for i := range result.Findings {
+		result.Findings[i].Title = sanitizeString(result.Findings[i].Title)
+		result.Findings[i].Body = sanitizeString(result.Findings[i].Body)
+		for k, v := range result.Findings[i].RemediationHints {
+			result.Findings[i].RemediationHints[k] = sanitizeString(v)
+		}
+	}
+	for i := range result.ToolTrace {
+		result.ToolTrace[i].Summary = sanitizeString(result.ToolTrace[i].Summary)
+	}
+	for k, v := range result.KPIs {
+		result.KPIs[k] = sanitizeValue(v)
+	}
+}
+
 // storeResult persists the campaign result via the collector, processes
 // feedback (issue creation/closure), publishes to Discussions, and notifies observers.
 func (s *Scheduler) storeResult(ctx context.Context, campaign *Campaign, result *CampaignResult) {
+	// Sanitize all output before any consumer sees it.
+	sanitizeResult(result)
+
 	if s.collector != nil {
 		if err := s.collector.StoreResult(ctx, campaign, result); err != nil {
 			log.Printf("campaign %s: failed to store result: %v", campaign.ID, err)

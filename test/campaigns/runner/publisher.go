@@ -363,8 +363,10 @@ func (p *Publisher) setAuth(req *http.Request) {
 
 // --- Sanitization ---
 
-// secretPatterns matches common secret prefixes that should never appear in public output.
-var secretPatterns = regexp.MustCompile(`(?i)(ghp_|ghs_|gho_|ghu_|github_pat_|sk-|sk-ant-|AKIA[A-Z0-9]|-----BEGIN)`)
+// secretPatterns matches common secret prefixes plus the token body that follows.
+// Each prefix is followed by [a-zA-Z0-9_-]+ to capture the full secret, not just
+// the prefix marker.
+var secretPatterns = regexp.MustCompile(`(?i)(ghp_[a-zA-Z0-9_]+|ghs_[a-zA-Z0-9_]+|gho_[a-zA-Z0-9_]+|ghu_[a-zA-Z0-9_]+|github_pat_[a-zA-Z0-9_]+|sk-ant-[a-zA-Z0-9_-]+|sk-[a-zA-Z0-9_-]+|AKIA[A-Z0-9]{16,}|-----BEGIN[^-]+-----[\s\S]*?-----END[^-]+-----)`)
 
 // internalURLPattern matches internal K8s and tailnet hostnames.
 var internalURLPattern = regexp.MustCompile(`[a-zA-Z0-9._-]+\.svc\.cluster\.local[:\d]*|[a-zA-Z0-9._-]+\.ts\.net[:\d]*|[a-zA-Z0-9._-]+\.taila[a-f0-9]+\.ts\.net[:\d]*`)
