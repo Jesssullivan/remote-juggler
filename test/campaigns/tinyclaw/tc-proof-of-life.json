@@ -10,7 +10,8 @@
   "process": [
     "Call github_fetch to read gateway/main.go from tinyland-inc/remote-juggler",
     "Report the first function definition you find in the file (exported or private), with its line number and whether it's exported",
-    "Write a brief __memory__ reflection about this being your first real tool call via agentic dispatch"
+    "Test error handling by attempting to fetch a non-existent file (gateway/nonexistent.go) and confirm graceful failure",
+    "Write a brief __memory__ reflection about this being your first real tool call via agentic dispatch, including how error handling worked"
   ],
   "tools": [
     "github_fetch"
