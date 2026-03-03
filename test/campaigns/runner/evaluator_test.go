@@ -314,6 +314,62 @@ func TestEvaluateImprovementNoBefore(t *testing.T) {
 	}
 }
 
+func TestEvaluateImprovementDurationOnly(t *testing.T) {
+	collector, _ := newTestCollector(t)
+	ctx := context.Background()
+
+	campaign := &Campaign{
+		ID:      "eval-duration",
+		Outputs: CampaignOutputs{SetecKey: "remotejuggler/campaigns/duration"},
+	}
+
+	now := time.Now().UTC()
+	splitTime := now.Add(5 * time.Minute)
+
+	// 3 "before" entries: 100% success, 30s duration each.
+	for i := 0; i < 3; i++ {
+		result := &CampaignResult{
+			RunID:      "before-" + string(rune('a'+i)),
+			Status:     "success",
+			ToolCalls:  1,
+			StartedAt:  now.Add(time.Duration(i) * time.Minute).Format(time.RFC3339),
+			FinishedAt: now.Add(time.Duration(i)*time.Minute + 30*time.Second).Format(time.RFC3339),
+		}
+		if err := collector.StoreRunHistory(ctx, campaign, result); err != nil {
+			t.Fatalf("store before %d: %v", i, err)
+		}
+	}
+
+	// 3 "after" entries: 100% success, 20s duration each (faster).
+	for i := 0; i < 3; i++ {
+		result := &CampaignResult{
+			RunID:      "after-" + string(rune('a'+i)),
+			Status:     "success",
+			ToolCalls:  1,
+			StartedAt:  splitTime.Add(time.Duration(i) * time.Minute).Format(time.RFC3339),
+			FinishedAt: splitTime.Add(time.Duration(i)*time.Minute + 20*time.Second).Format(time.RFC3339),
+		}
+		if err := collector.StoreRunHistory(ctx, campaign, result); err != nil {
+			t.Fatalf("store after %d: %v", i, err)
+		}
+	}
+
+	eval, err := collector.EvaluateImprovement(ctx, campaign.Outputs.SetecKey, splitTime.Format(time.RFC3339))
+	if err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+
+	if eval.SuccessRateDelta != 0 {
+		t.Errorf("success_rate_delta = %v, want 0 (both 100%%)", eval.SuccessRateDelta)
+	}
+	if eval.AvgDurationDelta >= 0 {
+		t.Errorf("avg_duration_delta = %v, want negative (faster)", eval.AvgDurationDelta)
+	}
+	if !eval.Improved {
+		t.Error("expected improved=true (perfect success + duration decrease)")
+	}
+}
+
 func TestHandleEvaluateMissingParams(t *testing.T) {
 	api := newTestAPI()
 

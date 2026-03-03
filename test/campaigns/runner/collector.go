@@ -413,7 +413,10 @@ func (c *Collector) EvaluateImprovement(ctx context.Context, setecKey, since str
 		AvgToolCallsDelta: avgToolCalls(after) - avgToolCalls(before),
 		AvgDurationDelta:  avgDuration(after) - avgDuration(before),
 	}
-	result.Improved = result.SuccessRateDelta > 0
+	// Improved if success rate went up, OR if success rate stayed perfect
+	// and duration decreased (efficiency gain).
+	result.Improved = result.SuccessRateDelta > 0 ||
+		(result.SuccessRateDelta == 0 && successRate(before) == 1.0 && result.AvgDurationDelta < 0)
 
 	return result, nil
 }
