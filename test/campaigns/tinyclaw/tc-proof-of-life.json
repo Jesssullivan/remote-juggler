@@ -8,10 +8,12 @@
     "event": "manual"
   },
   "process": [
-    "Call github_fetch to read gateway/main.go from tinyland-inc/remote-juggler",
-    "Report the first function definition you find in the file (exported or private), with its line number and whether it's exported",
-    "Test error handling by attempting to fetch a non-existent file (gateway/nonexistent.go) and confirm graceful failure",
-    "Write a brief __memory__ reflection about this being your first real tool call via agentic dispatch, including how error handling worked"
+    "Call github_fetch to read gateway/main.go from tinyland-inc/remote-juggler and note response characteristics",
+    "Call github_fetch to read cmd/rj-gateway/main.go for comparative analysis of tool call patterns",
+    "Report function definitions from both files, comparing file sizes and processing efficiency",
+    "Test error handling by attempting to fetch a non-existent file and document graceful failure behavior",
+    "Calculate tool call efficiency metrics (response time patterns, data throughput)",
+    "Write a __memory__ reflection about performance patterns and optimization opportunities for future campaigns"
   ],
   "tools": [
     "github_fetch"
