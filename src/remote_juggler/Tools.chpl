@@ -24,6 +24,9 @@ prototype module Tools {
   use super.Protocol;
   use super.Core only getEnvVar, expandTilde;
   import super.Setup;  // Use import instead of use to avoid symbol conflicts
+  import super.Manifest;
+  import super.Identity;
+  import super.AgeEncryption;
   use List;
   use IO;
   use OS.POSIX;
@@ -716,6 +719,231 @@ prototype module Tools {
       '}'
     ));
 
+    // ========================================================================
+    // IBSF (Identity-Bound Secret Fabric) Tools — Sprint B-E
+    // ========================================================================
+
+    // Tool: juggler_secrets_discover (IBSF Sprint B)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_discover",
+      description = "Discover all secrets across all sources (KDBX, environment, SSH, .env files) and generate a fleet-wide manifest at ~/tcfs/secrets/.manifest.toml. Returns a summary of discovered secrets with classification (shared/personal/machine-specific).",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_manifest (IBSF Sprint B)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_manifest",
+      description = "Read and return the current fleet secret manifest (~/.manifest.toml in TCFS secrets). Returns the full manifest as JSON with metadata and all secret entries (hashes only, never plaintext values).",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '},' +
+          '"format":{' +
+            '"type":"string",' +
+            '"description":"Output format: json (default) or summary",' +
+            '"default":"json"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_encrypt (IBSF Sprint C)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_encrypt",
+      description = "Encrypt a file or value using the user's age identity key. Produces a .age file suitable for TCFS sync. Uses age-plugin-yubikey (macOS) or age-plugin-tpm (Linux).",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"input_path":{' +
+            '"type":"string",' +
+            '"description":"Path to plaintext file to encrypt"' +
+          '},' +
+          '"value":{' +
+            '"type":"string",' +
+            '"description":"Plaintext value to encrypt (alternative to input_path)"' +
+          '},' +
+          '"output_path":{' +
+            '"type":"string",' +
+            '"description":"Output path for .age file (default: input_path + .age)"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_decrypt (IBSF Sprint C)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_decrypt",
+      description = "Decrypt an age-encrypted file using the user's HSM-backed identity key. Requires physical YubiKey (macOS) or TPM (Linux).",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"input_path":{' +
+            '"type":"string",' +
+            '"description":"Path to .age encrypted file"' +
+          '},' +
+          '"output_path":{' +
+            '"type":"string",' +
+            '"description":"Output path for decrypted file (default: strip .age extension)"' +
+          '},' +
+          '"to_string":{' +
+            '"type":"boolean",' +
+            '"description":"Return decrypted value as string instead of writing to file",' +
+            '"default":false' +
+          '}' +
+        '},' +
+        '"required":["input_path"]' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_rekey (IBSF Sprint C)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_rekey",
+      description = "Re-encrypt all .age files in TCFS secrets directory with a new age recipient key. Used after identity key rotation.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"new_recipient":{' +
+            '"type":"string",' +
+            '"description":"New age recipient public key to re-encrypt to"' +
+          '},' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '},' +
+        '"required":["new_recipient"]' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_sync (IBSF Sprint D)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_sync",
+      description = "Full IBSF sync cycle: discover local secrets, merge with remote manifests, push local-only secrets, pull remote-only secrets. Returns merge summary.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '},' +
+          '"conflict_strategy":{' +
+            '"type":"string",' +
+            '"description":"Conflict resolution: last-write-wins (default), source-priority, keep-both, prompt-user",' +
+            '"default":"last-write-wins"' +
+          '},' +
+          '"dry_run":{' +
+            '"type":"boolean",' +
+            '"description":"If true, report what would happen without making changes",' +
+            '"default":false' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_conflicts (IBSF Sprint D)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_conflicts",
+      description = "List unresolved merge conflicts from the last sync cycle. Shows local vs remote hash, source hosts, and source types for each conflict.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_resolve (IBSF Sprint D)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_resolve",
+      description = "Resolve a specific merge conflict. Choose keep-local (push local version), keep-remote (pull remote version), or keep-both (version both).",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"canonical_name":{' +
+            '"type":"string",' +
+            '"description":"Canonical name of the conflicting secret"' +
+          '},' +
+          '"resolution":{' +
+            '"type":"string",' +
+            '"description":"Resolution strategy: keep-local, keep-remote, keep-both"' +
+          '},' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '},' +
+        '"required":["canonical_name","resolution"]' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_get (IBSF Sprint E)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_get",
+      description = "Retrieve a secret value by canonical name. Decrypts from TCFS if age-encrypted. Returns the plaintext value, source type, and sync status.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"canonical_name":{' +
+            '"type":"string",' +
+            '"description":"Canonical name of the secret (e.g., api/anthropic, token/gitlab)"' +
+          '},' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '},' +
+        '"required":["canonical_name"]' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_status (IBSF Sprint E)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_status",
+      description = "Overall IBSF health dashboard. Returns manifest version, total secrets count, synced/unsynced counts, conflict count, and last sync timestamp.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
+    // Tool: juggler_secrets_audit (IBSF Sprint E)
+    tools.pushBack(new ToolDefinition(
+      name = "juggler_secrets_audit",
+      description = "Read recent entries from the IBSF audit log. Returns timestamped records of sync, resolve, encrypt, and discovery operations.",
+      inputSchema = '{' +
+        '"type":"object",' +
+        '"properties":{' +
+          '"limit":{' +
+            '"type":"integer",' +
+            '"description":"Maximum number of audit entries to return (default: 20)"' +
+          '},' +
+          '"tcfs_secrets_dir":{' +
+            '"type":"string",' +
+            '"description":"Path to TCFS secrets directory (default: ~/tcfs/secrets)"' +
+          '}' +
+        '}' +
+      '}'
+    ));
+
     return tools;
   }
 
@@ -842,6 +1070,40 @@ prototype module Tools {
       when "juggler_keys_sops_export" {
         return handleKeysSopsExportTool(params);
       }
+      // IBSF (Identity-Bound Secret Fabric) dispatch
+      when "juggler_secrets_discover" {
+        return handleSecretsDiscoverTool(params);
+      }
+      when "juggler_secrets_manifest" {
+        return handleSecretsManifestTool(params);
+      }
+      when "juggler_secrets_encrypt" {
+        return handleSecretsEncryptTool(params);
+      }
+      when "juggler_secrets_decrypt" {
+        return handleSecretsDecryptTool(params);
+      }
+      when "juggler_secrets_rekey" {
+        return handleSecretsRekeyTool(params);
+      }
+      when "juggler_secrets_sync" {
+        return handleSecretsSyncTool(params);
+      }
+      when "juggler_secrets_conflicts" {
+        return handleSecretsConflictsTool(params);
+      }
+      when "juggler_secrets_resolve" {
+        return handleSecretsResolveTool(params);
+      }
+      when "juggler_secrets_get" {
+        return handleSecretsGetTool(params);
+      }
+      when "juggler_secrets_status" {
+        return handleSecretsStatusTool(params);
+      }
+      when "juggler_secrets_audit" {
+        return handleSecretsAuditTool(params);
+      }
       otherwise {
         stderr.writeln("Tools: Unknown tool: ", name);
         return (false, "Unknown tool: " + name);
@@ -878,6 +1140,26 @@ prototype module Tools {
     } catch {
       return ".";
     }
+  }
+
+  /*
+   * Escape a string for safe interpolation into a JSON string value.
+   *
+   * Handles: backslash, double-quote, newline, carriage return, tab.
+   * Must replace backslash FIRST so subsequent replacements don't
+   * double-escape.
+   *
+   * :arg s: Raw string value
+   * :returns: JSON-safe escaped string (without surrounding quotes)
+   */
+  proc escapeJsonString(s: string): string {
+    var escaped = s;
+    escaped = escaped.replace("\\", "\\\\");
+    escaped = escaped.replace("\"", "\\\"");
+    escaped = escaped.replace("\n", "\\n");
+    escaped = escaped.replace("\r", "\\r");
+    escaped = escaped.replace("\t", "\\t");
+    return escaped;
   }
 
   /*
@@ -3857,5 +4139,709 @@ prototype module Tools {
     } else {
       return (false, pubKey);
     }
+  }
+
+  // ============================================================================
+  // IBSF Sprint B: Secret Discovery Tool Handlers
+  // ============================================================================
+
+  /*
+   * Handle juggler_secrets_discover tool call.
+   *
+   * Discovers all secrets across all sources, generates a manifest,
+   * and writes it to ~/tcfs/secrets/.manifest.toml.
+   */
+  proc handleSecretsDiscoverTool(params: string): (bool, string) {
+    // Parse optional tcfs_secrets_dir
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const home = getEnvHome();
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    // Auto-unlock KDBX
+    if !KeePassXC.canAutoUnlock() {
+      return (false, "Cannot auto-unlock key store. Ensure HSM and YubiKey are available.");
+    }
+    const (unlockOk, password) = KeePassXC.autoUnlock();
+    if !unlockOk {
+      return (false, "Failed to unlock key store.");
+    }
+
+    const dbPath = KeePassXC.getDatabasePath();
+
+    // Run discovery
+    const (discoverOk, entries) = KeePassXC.discoverAll(dbPath, password, secretsDir);
+    if !discoverOk {
+      return (false, "Discovery failed.");
+    }
+
+    // Get identity for metadata (detectIdentity returns (bool, GitIdentity, string))
+    const (idOk, currentIdentity, _detReason) = Identity.detectIdentity();
+    const identityName = if idOk then currentIdentity.name else getEnvVar("USER");
+
+    // Build metadata
+    var metadata = new Manifest.ManifestMetadata();
+    metadata.identity = identityName;
+    metadata.generatedOn = Manifest.getLocalHostname();
+    metadata.generatedAt = Manifest.nowISO8601();
+    metadata.totalSecrets = entries.size: int;
+
+    // Write manifest
+    const manifestPath = Manifest.getManifestPath(secretsDir);
+    const writeOk = Manifest.writeManifest(manifestPath, metadata, entries);
+
+    if writeOk {
+      var output = Manifest.manifestSummary(metadata, entries);
+      output += "\nManifest written to: " + manifestPath + "\n";
+      return (true, output);
+    } else {
+      // Return summary even if write failed (e.g., TCFS not mounted)
+      var output = Manifest.manifestSummary(metadata, entries);
+      output += "\nWARNING: Could not write manifest to: " + manifestPath + "\n";
+      output += "Ensure TCFS is mounted at " + secretsDir + "\n";
+      return (true, output);
+    }
+  }
+
+  /*
+   * Handle juggler_secrets_manifest tool call.
+   *
+   * Reads the current manifest and returns it as JSON or summary.
+   */
+  proc handleSecretsManifestTool(params: string): (bool, string) {
+    // Parse parameters
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const (hasFmt, format) = Protocol.extractJsonString(params, "format");
+    const home = getEnvHome();
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+    const outputFormat = if hasFmt && format != "" then format else "json";
+
+    const manifestPath = Manifest.getManifestPath(secretsDir);
+
+    var metadata = new Manifest.ManifestMetadata();
+    var secrets: list(Manifest.SecretEntry);
+
+    const readOk = Manifest.readManifest(manifestPath, metadata, secrets);
+    if !readOk {
+      return (false, "No manifest found at " + manifestPath + ". Run juggler_secrets_discover first.");
+    }
+
+    if outputFormat == "summary" {
+      return (true, Manifest.manifestSummary(metadata, secrets));
+    } else {
+      return (true, Manifest.manifestToJSON(metadata, secrets));
+    }
+  }
+
+  // ============================================================================
+  // IBSF Sprint C: Age Encryption Tool Handlers
+  // ============================================================================
+
+  /*
+   * Handle juggler_secrets_encrypt tool call.
+   *
+   * Encrypts a file or value using the user's age identity key.
+   */
+  proc handleSecretsEncryptTool(params: string): (bool, string) {
+    if !AgeEncryption.hasAgeBinary() {
+      return (false, "age binary not found on PATH. Install age first.");
+    }
+
+    const (hasInput, inputPath) = Protocol.extractJsonString(params, "input_path");
+    const (hasValue, value) = Protocol.extractJsonString(params, "value");
+    const (hasOutput, outputPath) = Protocol.extractJsonString(params, "output_path");
+
+    const outPath = if hasOutput && outputPath != "" then outputPath else "";
+
+    if hasInput && inputPath != "" {
+      // Encrypt a file
+      const result = AgeEncryption.ageEncryptFile(inputPath, outPath);
+      if result.ok {
+        return (true, "Encrypted: " + inputPath + " -> " + result.outputPath);
+      } else {
+        return (false, result.errMsg);
+      }
+    } else if hasValue && value != "" {
+      // Encrypt a value
+      if outPath == "" {
+        return (false, "output_path is required when encrypting a value.");
+      }
+      const result = AgeEncryption.ageEncryptValue(value, outPath);
+      if result.ok {
+        return (true, "Encrypted value written to: " + result.outputPath);
+      } else {
+        return (false, result.errMsg);
+      }
+    } else {
+      return (false, "Either input_path or value must be provided.");
+    }
+  }
+
+  /*
+   * Handle juggler_secrets_decrypt tool call.
+   *
+   * Decrypts an age-encrypted file using the user's HSM-backed identity.
+   */
+  proc handleSecretsDecryptTool(params: string): (bool, string) {
+    if !AgeEncryption.hasAgeBinary() {
+      return (false, "age binary not found on PATH. Install age first.");
+    }
+
+    const (hasInput, inputPath) = Protocol.extractJsonString(params, "input_path");
+    if !hasInput || inputPath == "" {
+      return (false, "input_path is required.");
+    }
+
+    const (hasToString, toStringVal) = Protocol.extractJsonString(params, "to_string");
+    const returnString = (hasToString && toStringVal == "true");
+
+    if returnString {
+      const (ok, plaintext) = AgeEncryption.ageDecryptToString(inputPath);
+      if ok {
+        return (true, plaintext);
+      } else {
+        return (false, "Failed to decrypt " + inputPath + ". Ensure identity key is available.");
+      }
+    }
+
+    const (hasOutput, outputPath) = Protocol.extractJsonString(params, "output_path");
+    const outPath = if hasOutput && outputPath != "" then outputPath else "";
+
+    const result = AgeEncryption.ageDecryptFile(inputPath, outPath);
+    if result.ok {
+      return (true, "Decrypted: " + inputPath + " -> " + result.outputPath);
+    } else {
+      return (false, result.errMsg);
+    }
+  }
+
+  /*
+   * Handle juggler_secrets_rekey tool call.
+   *
+   * Re-encrypts all .age files in TCFS secrets directory with a new recipient.
+   */
+  proc handleSecretsRekeyTool(params: string): (bool, string) {
+    if !AgeEncryption.hasAgeBinary() {
+      return (false, "age binary not found on PATH. Install age first.");
+    }
+
+    const (hasRecipient, newRecipient) = Protocol.extractJsonString(params, "new_recipient");
+    if !hasRecipient || newRecipient == "" {
+      return (false, "new_recipient is required.");
+    }
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const home = getEnvHome();
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    const (total, success, failed) = AgeEncryption.ageRekeyDirectory(secretsDir, newRecipient);
+
+    if total == 0 {
+      return (true, "No .age files found in " + secretsDir);
+    }
+
+    var output = "Re-keyed " + success:string + "/" + total:string + " files";
+    if failed > 0 {
+      output += " (" + failed:string + " failed)";
+    }
+    output += " in " + secretsDir;
+    output += "\nNew recipient: " + newRecipient;
+
+    return (success > 0, output);
+  }
+
+  // ============================================================================
+  // IBSF Sprint D: Bidirectional Merge Tool Handlers
+  // ============================================================================
+
+  /*
+   * Handle juggler_secrets_sync tool call.
+   *
+   * Full sync cycle: discover local secrets, read remote manifests,
+   * merge, then execute push/pull actions.
+   */
+  proc handleSecretsSyncTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    // Parse optional tcfs_secrets_dir
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    // Parse optional conflict_strategy
+    const (hasStrategy, strategyStr) = Protocol.extractJsonString(params, "conflict_strategy");
+    var strategy = Manifest.ConflictStrategy.promptUser;
+    if hasStrategy {
+      select strategyStr {
+        when "last-write-wins" do strategy = Manifest.ConflictStrategy.lastWriteWins;
+        when "source-priority" do strategy = Manifest.ConflictStrategy.sourcePriority;
+        when "keep-both"       do strategy = Manifest.ConflictStrategy.keepBoth;
+        otherwise              do strategy = Manifest.ConflictStrategy.promptUser;
+      }
+    }
+
+    // Parse dry_run flag
+    const (hasDryRun, dryRunStr) = Protocol.extractJsonString(params, "dry_run");
+    const dryRun = hasDryRun && (dryRunStr == "true" || dryRunStr == "1");
+
+    // Step 1: Build local manifest via discovery
+    const hostname = Manifest.getLocalHostname();
+
+    // Read current local manifest if it exists
+    const localManifestPath = Manifest.getHostManifestPath(secretsDir, hostname);
+    var localMetadata: Manifest.ManifestMetadata;
+    var localSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(localManifestPath, localMetadata, localSecrets);
+
+    // Step 2: Discover host manifests and merge
+    const hostManifests = Manifest.discoverHostManifests(secretsDir);
+
+    if hostManifests.size < 2 {
+      // Only our own manifest (or none) — nothing to merge
+      return (true, '{"status":"no_remote","message":"No remote host manifests found to merge. Only local manifest present.","secrets_dir":"' + secretsDir + '"}');
+    }
+
+    // Find the canonical (merged) manifest
+    const canonicalPath = secretsDir + "/.manifest.toml";
+    var canonicalMetadata: Manifest.ManifestMetadata;
+    var canonicalSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(canonicalPath, canonicalMetadata, canonicalSecrets);
+
+    // Merge local against canonical
+    var result = Manifest.mergeManifests(localSecrets, canonicalSecrets, hostname, strategy);
+
+    if dryRun {
+      // Return merge plan without executing
+      return (true, Manifest.mergeResultToJSON(result));
+    }
+
+    // Step 3: Execute push/pull actions
+    const (pushCount, pullCount, failCount) = Manifest.executeMergeActions(result, secretsDir, hostname);
+
+    // Step 4: Write updated manifest
+    const updatedPath = Manifest.getHostManifestPath(secretsDir, hostname);
+    Manifest.writeManifest(updatedPath, localMetadata, localSecrets);
+
+    // Step 5: Log the sync
+    Manifest.auditLog(secretsDir, "sync",
+      hostname,
+      hostname,
+      "pushed=" + result.pushed:string +
+      ",pulled=" + result.pulled:string +
+      ",conflicts=" + result.conflicts:string);
+
+    // Build response
+    var output = '{';
+    output += '"status":"synced",';
+    output += '"pushed":' + result.pushed:string + ',';
+    output += '"pulled":' + result.pulled:string + ',';
+    output += '"conflicts":' + result.conflicts:string + ',';
+    output += '"no_ops":' + result.noOps:string + ',';
+    output += '"tombstones":' + result.tombstones:string + ',';
+    output += '"unresolved_conflicts":' + result.unresolvedConflicts.size:string + ',';
+    output += '"secrets_dir":"' + secretsDir + '"';
+    output += '}';
+
+    return (true, output);
+  }
+
+  /*
+   * Handle juggler_secrets_conflicts tool call.
+   *
+   * Lists all unresolved merge conflicts from the manifest merge state.
+   */
+  proc handleSecretsConflictsTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    // Read the canonical manifest
+    const canonicalPath = secretsDir + "/.manifest.toml";
+    var canonicalMetadata: Manifest.ManifestMetadata;
+    var canonicalSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(canonicalPath, canonicalMetadata, canonicalSecrets);
+
+    // Read local host manifest
+    const hostname = Manifest.getLocalHostname();
+    const localPath = Manifest.getHostManifestPath(secretsDir, hostname);
+    var localMetadata: Manifest.ManifestMetadata;
+    var localSecrets: list(Manifest.SecretEntry);
+    Manifest.readManifest(localPath, localMetadata, localSecrets);
+
+    // Merge with promptUser strategy to surface all conflicts
+    var result = Manifest.mergeManifests(localSecrets, canonicalSecrets, hostname,
+                                         Manifest.ConflictStrategy.promptUser);
+
+    if result.unresolvedConflicts.size == 0 {
+      return (true, '{"conflicts":[],"message":"No unresolved conflicts."}');
+    }
+
+    // Build JSON array of conflicts
+    var output = '{"conflicts":[';
+    var first = true;
+    for conflict in result.unresolvedConflicts {
+      if !first then output += ",";
+      first = false;
+
+      output += '{';
+      output += '"canonical_name":"' + escapeJsonString(conflict.canonicalName) + '",';
+      output += '"local_hash":"' + conflict.localHash + '",';
+      output += '"remote_hash":"' + conflict.remoteHash + '",';
+      output += '"local_host":"' + escapeJsonString(conflict.localHost) + '",';
+      output += '"remote_host":"' + escapeJsonString(conflict.remoteHost) + '",';
+      output += '"local_updated":"' + conflict.localDiscoveredAt + '",';
+      output += '"remote_updated":"' + conflict.remoteDiscoveredAt + '"';
+      output += '}';
+    }
+    output += '],"count":' + result.unresolvedConflicts.size:string + '}';
+
+    return (true, output);
+  }
+
+  /*
+   * Handle juggler_secrets_resolve tool call.
+   *
+   * Resolves a specific conflict by canonical name using the chosen strategy.
+   */
+  proc handleSecretsResolveTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    // Required: canonical_name
+    const (hasName, canonicalName) = Protocol.extractJsonString(params, "canonical_name");
+    if !hasName || canonicalName == "" {
+      return (false, "canonical_name is required.");
+    }
+
+    // Required: resolution
+    const (hasRes, resolutionStr) = Protocol.extractJsonString(params, "resolution");
+    if !hasRes || resolutionStr == "" {
+      return (false, "resolution is required. Must be: keep-local, keep-remote, keep-both");
+    }
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    const hostname = Manifest.getLocalHostname();
+
+    // Build a SecretEntry for push/pull operations
+    var secretEntry = new Manifest.SecretEntry();
+    secretEntry.canonicalName = canonicalName;
+    secretEntry.sourceHost = hostname;
+
+    // Map resolution string to action
+    select resolutionStr {
+      when "keep-local" {
+        // Push local version to TCFS (overwrites remote)
+        const pushOk = Manifest.pushSecretToTcfs(secretEntry, secretsDir);
+        if pushOk {
+          Manifest.auditLog(secretsDir, "resolve:keep-local",
+            canonicalName, hostname);
+          return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-local","status":"pushed"}');
+        } else {
+          return (false, "Failed to push local version of " + canonicalName);
+        }
+      }
+      when "keep-remote" {
+        // Pull remote version (overwrites local)
+        const pullOk = Manifest.pullSecretFromTcfs(secretEntry, secretsDir);
+        if pullOk {
+          Manifest.auditLog(secretsDir, "resolve:keep-remote",
+            canonicalName, hostname);
+          return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-remote","status":"pulled"}');
+        } else {
+          return (false, "Failed to pull remote version of " + canonicalName);
+        }
+      }
+      when "keep-both" {
+        // Version both: rename local to .local, keep remote as canonical
+        const localPath = secretsDir + "/" + canonicalName;
+        const versionedPath = localPath + "." + hostname;
+
+        // Copy local to versioned name
+        try {
+          use IO;
+          use FileSystem;
+          if exists(localPath) {
+            copy(localPath, versionedPath);
+          }
+        } catch {
+          return (false, "Failed to create versioned copy of " + canonicalName);
+        }
+
+        // Pull remote as canonical
+        const pullOk = Manifest.pullSecretFromTcfs(secretEntry, secretsDir);
+        Manifest.auditLog(secretsDir, "resolve:keep-both",
+          canonicalName, hostname,
+          "versioned=" + versionedPath);
+
+        return (true, '{"resolved":"' + escapeJsonString(canonicalName) + '","action":"keep-both","status":"versioned","local_copy":"' + escapeJsonString(versionedPath) + '"}');
+      }
+      otherwise {
+        return (false, "Invalid resolution: " + resolutionStr + ". Must be: keep-local, keep-remote, keep-both");
+      }
+    }
+  }
+
+  // ============================================================================
+  // IBSF Sprint E: MCP Tools + Runtime Integration Handlers
+  // ============================================================================
+
+  /*
+   * Handle juggler_secrets_get tool call.
+   *
+   * Retrieves a secret value by canonical name. If the secret is age-encrypted,
+   * decrypts it using the local age identity. Returns the plaintext value.
+   */
+  proc handleSecretsGetTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    const (hasName, canonicalName) = Protocol.extractJsonString(params, "canonical_name");
+    if !hasName || canonicalName == "" {
+      return (false, "canonical_name is required.");
+    }
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    // Try multiple possible paths for the secret
+    const plainPath = secretsDir + "/" + canonicalName;
+    const agePath = plainPath + ".age";
+
+    use FileSystem;
+
+    // Check for age-encrypted version first
+    if exists(agePath) {
+      // Decrypt with age
+      if AgeEncryption.hasAgeBinary() {
+        const (decOk, decrypted) = AgeEncryption.ageDecryptToString(agePath);
+        if decOk {
+          // Look up source info from manifest
+          const manifestPath = secretsDir + "/.manifest.toml";
+          var mMeta: Manifest.ManifestMetadata;
+          var mSecrets: list(Manifest.SecretEntry);
+          Manifest.readManifest(manifestPath, mMeta, mSecrets);
+          var sourceType = "unknown";
+          var synced = true;
+          for entry in mSecrets {
+            if entry.canonicalName == canonicalName {
+              sourceType = entry.sourceType;
+              synced = entry.synced;
+              break;
+            }
+          }
+
+          return (true, '{"canonical_name":"' + escapeJsonString(canonicalName) +
+            '","value":"' + escapeJsonString(decrypted) +
+            '","source":"' + escapeJsonString(sourceType) +
+            '","synced":' + (if synced then "true" else "false") +
+            ',"encrypted":true}');
+        } else {
+          return (false, "Failed to decrypt " + agePath);
+        }
+      } else {
+        return (false, "age binary not found — cannot decrypt " + agePath);
+      }
+    }
+
+    // Try plaintext file
+    if exists(plainPath) {
+      try {
+        use IO;
+        var f = open(plainPath, ioMode.r);
+        var reader = f.reader(locking=false);
+        var value: string;
+        reader.readAll(value);
+        reader.close();
+        f.close();
+
+        // Trim trailing newline
+        if value.endsWith("\n") then value = value[0..#(value.size - 1)];
+
+        // Look up source info from manifest
+        const manifestPath = secretsDir + "/.manifest.toml";
+        var mMeta: Manifest.ManifestMetadata;
+        var mSecrets: list(Manifest.SecretEntry);
+        Manifest.readManifest(manifestPath, mMeta, mSecrets);
+        var sourceType = "unknown";
+        var synced = true;
+        for entry in mSecrets {
+          if entry.canonicalName == canonicalName {
+            sourceType = entry.sourceType;
+            synced = entry.synced;
+            break;
+          }
+        }
+
+        return (true, '{"canonical_name":"' + escapeJsonString(canonicalName) +
+          '","value":"' + escapeJsonString(value) +
+          '","source":"' + escapeJsonString(sourceType) +
+          '","synced":' + (if synced then "true" else "false") +
+          ',"encrypted":false}');
+      } catch {
+        return (false, "Failed to read " + plainPath);
+      }
+    }
+
+    return (false, "Secret not found: " + canonicalName +
+      " (checked " + plainPath + " and " + agePath + ")");
+  }
+
+  /*
+   * Handle juggler_secrets_status tool call.
+   *
+   * Returns an overall IBSF health dashboard: manifest version, total secrets,
+   * synced/unsynced counts, conflict count, last sync time.
+   */
+  proc handleSecretsStatusTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    use FileSystem;
+
+    // Read canonical manifest
+    const manifestPath = secretsDir + "/.manifest.toml";
+    if !exists(manifestPath) {
+      return (true, '{"status":"no_manifest","message":"No manifest found at ' +
+        manifestPath + '. Run discovery first.","secrets_dir":"' + secretsDir + '"}');
+    }
+
+    var metadata: Manifest.ManifestMetadata;
+    var secrets: list(Manifest.SecretEntry);
+    const readOk = Manifest.readManifest(manifestPath, metadata, secrets);
+    if !readOk {
+      return (true, '{"status":"no_manifest","message":"Failed to parse manifest at ' +
+        manifestPath + '.","secrets_dir":"' + secretsDir + '"}');
+    }
+
+    // Count synced vs unsynced
+    var syncedCount = 0;
+    var unsyncedCount = 0;
+    for entry in secrets {
+      if entry.synced then syncedCount += 1;
+      else unsyncedCount += 1;
+    }
+
+    // Count per-host manifests
+    const hostManifests = Manifest.discoverHostManifests(secretsDir);
+
+    // Check for conflicts (merge with promptUser to detect them)
+    var conflictCount = 0;
+    const hostname = Manifest.getLocalHostname();
+    const localPath = Manifest.getHostManifestPath(secretsDir, hostname);
+    if exists(localPath) {
+      var localMeta: Manifest.ManifestMetadata;
+      var localSecrets: list(Manifest.SecretEntry);
+      Manifest.readManifest(localPath, localMeta, localSecrets);
+      var result = Manifest.mergeManifests(localSecrets, secrets, hostname,
+                                           Manifest.ConflictStrategy.promptUser);
+      conflictCount = result.unresolvedConflicts.size: int;
+    }
+
+    // Check age encryption status
+    const recipientPath = home + "/.config/remotejuggler/age/recipient.txt";
+    const hasAge = exists(recipientPath) && AgeEncryption.hasAgeBinary();
+
+    // Read last sync from audit log
+    var lastSync = "never";
+    const auditPath = secretsDir + "/.audit.log";
+    if exists(auditPath) {
+      const entries = Manifest.readAuditLog(secretsDir);
+      // Find the last sync entry
+      for i in 0..#entries.size by -1 {
+        const entry = entries[entries.size - 1 - i];
+        if entry.startsWith("20") {  // ISO 8601 timestamp
+          lastSync = entry[0..#19];  // Extract timestamp
+          break;
+        }
+      }
+    }
+
+    var output = '{';
+    output += '"status":"ok",';
+    output += '"manifest_version":' + metadata.version:string + ',';
+    output += '"identity":"' + escapeJsonString(metadata.identity) + '",';
+    output += '"generated_on":"' + escapeJsonString(metadata.generatedOn) + '",';
+    output += '"total_secrets":' + metadata.totalSecrets:string + ',';
+    output += '"synced":' + syncedCount:string + ',';
+    output += '"unsynced":' + unsyncedCount:string + ',';
+    output += '"conflicts":' + conflictCount:string + ',';
+    output += '"host_manifests":' + hostManifests.size:string + ',';
+    output += '"age_encryption":' + (if hasAge then "true" else "false") + ',';
+    output += '"last_sync":"' + escapeJsonString(lastSync) + '",';
+    output += '"secrets_dir":"' + escapeJsonString(secretsDir) + '"';
+    output += '}';
+
+    return (true, output);
+  }
+
+  /*
+   * Handle juggler_secrets_audit tool call.
+   *
+   * Returns recent audit log entries (timestamped sync, resolve, encrypt actions).
+   */
+  proc handleSecretsAuditTool(params: string): (bool, string) {
+    const home = getEnvHome();
+
+    const (hasTcfs, tcfsDir) = Protocol.extractJsonString(params, "tcfs_secrets_dir");
+    const secretsDir = if hasTcfs && tcfsDir != "" then tcfsDir
+                       else home + "/tcfs/secrets";
+
+    // Parse limit parameter
+    const (hasLimit, limitStr) = Protocol.extractJsonString(params, "limit");
+    var limit = 20;
+    if hasLimit && limitStr != "" {
+      try {
+        limit = limitStr: int;
+      } catch {
+        limit = 20;
+      }
+    }
+    if limit < 1 then limit = 1;
+    if limit > 200 then limit = 200;
+
+    use FileSystem;
+
+    const auditPath = secretsDir + "/.audit.log";
+    if !exists(auditPath) {
+      return (true, '{"entries":[],"message":"No audit log found. No sync operations have been performed yet."}');
+    }
+
+    const allEntries = Manifest.readAuditLog(secretsDir);
+
+    // Take the last `limit` entries
+    const startIdx = if allEntries.size > limit then allEntries.size - limit else 0;
+
+    var output = '{"entries":[';
+    var first = true;
+    for i in startIdx..#(allEntries.size - startIdx) {
+      if !first then output += ",";
+      first = false;
+
+      const entry = allEntries[i];
+      // Each entry is a line like "2026-02-27T10:30:00Z sync:xoxd-bates:pushed=3,pulled=1"
+      // Split into timestamp and action
+      var timestamp = "";
+      var action = entry;
+      const spaceIdx = entry.find(" "):int;
+      if spaceIdx > 0 {
+        timestamp = entry[0..#spaceIdx];
+        action = entry[spaceIdx + 1..];
+      }
+
+      output += '{"timestamp":"' + timestamp + '","action":"' + action + '"}';
+    }
+    output += '],"total":' + allEntries.size:string;
+    output += ',"returned":' + (allEntries.size - startIdx):string + '}';
+
+    return (true, output);
   }
 }
