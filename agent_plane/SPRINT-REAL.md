@@ -639,6 +639,77 @@ This is longer than the original 6-week EPIC because it does less but does it fo
 
 ---
 
+## Post-Sprint: Autonomous Agents (2026-03-02/03)
+
+### What Changed
+
+The 6-phase sprint proved agents can do real work — tool calls, PRs, memory, skills,
+cross-agent handoffs, self-improvement. But agents were still constrained by campaign
+definitions: predetermined tool lists, numbered process steps, low iteration caps.
+
+**"From Campaigns to Autonomous Agents"** (commit 9a1c3a9) removed all three constraints:
+
+| Before | After |
+|--------|-------|
+| Campaign `"tools": ["github_fetch"]` filtered to 1 tool | Agent sees ALL 61+ gateway tools (nil filter) |
+| `"process": ["Step 1: Call X", "Step 2: Call Y"]` scripted behavior | Description = task; process = optional hints; agent reasons |
+| `maxToolIterations = 10` artificial ceiling | 25 iterations (matches OpenClaw default) |
+| No web research capability | `web_search` (Brave API) + `web_fetch` (URL fetcher) |
+
+### Verification: tc-identity-demo (2026-03-03)
+
+TinyClaw ran `tc-identity-demo` with zero prescribed tool calls. Result:
+
+- **17 tool calls** across 5 categories (identity, secret, GitHub, web, audit)
+- **18 iterations**, 1m50s duration
+- Tools used autonomously: `juggler_list_identities`, `juggler_status`, `juggler_gpg_status`,
+  `juggler_detect_identity`, `juggler_validate`, `juggler_resolve_composite`, `juggler_setec_get`,
+  `github_fetch`, `github_create_discussion`, and more
+- Agent chose its own investigation path — no scripting, no tool allowlist
+- Created GitHub Discussion #484 with real tool output
+
+### Bugs Fixed During Deployment
+
+1. **Gzip decompression** (`web_tools.go`): Explicit `Accept-Encoding: gzip` disabled Go's
+   transparent decompression. Fix: remove the header.
+2. **Agentic dispatch gate** (`tinyclaw.go`): `len(c.Tools) > 0` blocked campaigns with
+   `"tools": []` from agentic dispatch. Fix: API key is the only requirement.
+3. **Civo PVC Multi-Attach**: RWO volumes stuck on old node after pod reschedule. Fix:
+   delete VolumeAttachment objects + pods.
+4. **Brave API key**: Not in Setec seed list. Fix: manual seed + added to `setec_seed.tf` +
+   `BRAVE_API_KEY` GitHub Actions secret.
+5. **Kill switch**: Left active from previous run. Fix: clear via `juggler_setec_put`.
+
+### Security Issue: Credential Leak
+
+TinyClaw included raw API keys and tokens in Discussion #484 via `juggler_resolve_composite`
+output. **Fixed** in commit e4c3419:
+- `sanitizeResult()` at scheduler level — all output sanitized before any consumer
+- `secretPatterns` regex updated to match full tokens, not just prefixes
+- Covers findings, tool trace, KPIs, error messages
+- Defense-in-depth: publisher already sanitized Discussions, now issues/PRs/Setec also clean
+
+### Plan Success Criteria
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | `web_search` returns real Brave API results | PASS — live verified |
+| 2 | TinyClaw uses identity management tools | PASS — 8+ identity tools |
+| 3 | GitHub Discussion with web research citations | PENDING — tc-research-peers not yet triggered |
+| 4 | Agent makes 5+ tool calls per session | PASS — 17 tool calls |
+| 5 | Zero predetermined tool call sequences | PASS — agent chose autonomously |
+
+### What This Means
+
+The sprint's core principle was "one thing that works > five things that don't." We now have:
+- **IronClaw**: Makes real tool calls, creates PRs that pass CI, has persistent memory and skills
+- **TinyClaw**: Autonomous agent with 61+ tools, web research, identity management, no scripts
+- **Infrastructure**: Sanitized output pipeline, confabulation detection, system-measured metrics
+
+The agents are no longer performing. They're working.
+
+---
+
 ## What This Sprint Is NOT
 
 - **Not 53 campaigns running on schedule.** We disabled all but 1.
