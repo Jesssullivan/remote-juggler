@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -498,6 +499,30 @@ func (h *GitHubToolHandler) PatchFile(ctx context.Context, args json.RawMessage)
 	}
 	if a.Owner == "" || a.Repo == "" || a.Path == "" || a.OldContent == "" || a.Message == "" || a.Branch == "" {
 		return nil, fmt.Errorf("owner, repo, path, old_content, message, and branch are required")
+	}
+
+	// Auto-create branch if it doesn't exist and isn't the default branch.
+	// This saves agents a separate github_create_branch call.
+	if a.Branch != "main" && a.Branch != "master" {
+		refURL := fmt.Sprintf("%s/repos/%s/%s/git/ref/heads/%s", h.apiBase, a.Owner, a.Repo, a.Branch)
+		checkResp, checkErr := h.doRequest(ctx, http.MethodGet, refURL, nil)
+		if checkErr == nil {
+			io.ReadAll(checkResp.Body)
+			checkResp.Body.Close()
+			if checkResp.StatusCode == http.StatusNotFound {
+				// Branch doesn't exist — create it from main.
+				log.Printf("github_patch_file: auto-creating branch %q from main", a.Branch)
+				branchArgs, _ := json.Marshal(map[string]string{
+					"owner":       a.Owner,
+					"repo":        a.Repo,
+					"branch_name": a.Branch,
+					"base":        "main",
+				})
+				if _, branchErr := h.CreateBranch(ctx, branchArgs); branchErr != nil {
+					return nil, fmt.Errorf("auto-create branch %q: %w", a.Branch, branchErr)
+				}
+			}
+		}
 	}
 
 	// Fetch current file content.
