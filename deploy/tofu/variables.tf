@@ -58,6 +58,13 @@ variable "brave_api_key" {
   default     = ""
 }
 
+variable "github_webhook_secret" {
+  description = "HMAC secret for GitHub webhook signature validation (seeded into Setec as github-webhook-secret)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "openclaw_gateway_token" {
   description = "Bearer token for IronClaw (OpenClaw) gateway HTTP endpoints auth"
   type        = string

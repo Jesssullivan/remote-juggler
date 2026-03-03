@@ -759,3 +759,58 @@ func TestSchedulerPRFeedbackIntegration(t *testing.T) {
 		t.Errorf("expected 1 PR from scheduler integration, got %d", len(gh.createdPRs))
 	}
 }
+
+func TestCreateIssueComment(t *testing.T) {
+	gh := newMockGitHub()
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+
+	err := handler.CreateIssueComment(context.Background(), "tinyland-inc/remote-juggler", 42, "Here is my response.")
+	if err != nil {
+		t.Fatalf("CreateIssueComment: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.comments) != 1 {
+		t.Fatalf("expected 1 comment, got %d", len(gh.comments))
+	}
+
+	body, ok := gh.comments[0]["body"].(string)
+	if !ok || body != "Here is my response." {
+		t.Errorf("comment body = %q, want 'Here is my response.'", body)
+	}
+}
+
+func TestCreateIssueComment_SanitizesSecrets(t *testing.T) {
+	gh := newMockGitHub()
+	server := httptest.NewServer(gh.Handler())
+	defer server.Close()
+
+	handler := newTestFeedback(server)
+
+	// Body contains a secret that should be redacted.
+	err := handler.CreateIssueComment(context.Background(), "tinyland-inc/remote-juggler", 42,
+		"Found token ghp_secretTokenValue123 in the config")
+	if err != nil {
+		t.Fatalf("CreateIssueComment: %v", err)
+	}
+
+	gh.mu.Lock()
+	defer gh.mu.Unlock()
+
+	if len(gh.comments) != 1 {
+		t.Fatalf("expected 1 comment, got %d", len(gh.comments))
+	}
+
+	body := gh.comments[0]["body"].(string)
+	if strings.Contains(body, "ghp_secretTokenValue123") {
+		t.Errorf("comment body contains unredacted secret: %s", body)
+	}
+	if !strings.Contains(body, "[REDACTED]") {
+		t.Errorf("comment body should contain [REDACTED]: %s", body)
+	}
+}

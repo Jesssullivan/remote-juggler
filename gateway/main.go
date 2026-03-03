@@ -120,6 +120,9 @@ func main() {
 	proxy.campaigns = NewCampaignClient(cfg.CampaignRunnerURL)
 	proxy.web = NewWebToolHandler(setec)
 
+	// Initialize GitHub webhook forwarder (proxies webhooks to campaign runner).
+	webhookForwarder := NewGitHubWebhookForwarder(cfg.CampaignRunnerURL, setec)
+
 	// Start background polling for configured secrets.
 	if setec.Configured() && len(cfg.SetecSecrets) > 0 {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -185,6 +188,7 @@ func main() {
 	mux.HandleFunc("/setec/list", handleSetecList(setec))
 	mux.HandleFunc("/setec/get", handleSetecGet(setec, audit))
 	mux.HandleFunc("/aperture/webhook", webhookReceiver.HandleWebhook)
+	mux.HandleFunc("/github/webhook", webhookForwarder.HandleWebhook)
 	mux.HandleFunc("/portal", handlePortal)
 	mux.HandleFunc("/portal/api", handlePortalAPI(audit, meterStore))
 

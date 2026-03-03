@@ -17,6 +17,7 @@ locals {
       "anthropic-api-key"         = var.anthropic_api_key
       "github-app-private-key"    = var.github_app_private_key
       "brave-api-key"             = var.brave_api_key
+      "github-webhook-secret"     = var.github_webhook_secret
     } : k => v if v != ""
   }
 

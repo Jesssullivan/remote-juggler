@@ -111,6 +111,13 @@ func main() {
 	if *apiPort > 0 {
 		api := NewAPIServer(scheduler, registry)
 		scheduler.OnResult = api.RecordResult
+
+		// Wire thread fetcher for conversation dispatch (requires GitHub token).
+		if ghToken != "" {
+			api.threadFetcher = NewThreadFetcher(ghToken)
+			log.Printf("conversation dispatch enabled (thread fetcher configured)")
+		}
+
 		go func() {
 			addr := fmt.Sprintf(":%d", *apiPort)
 			if err := api.ListenAndServe(addr); err != nil {

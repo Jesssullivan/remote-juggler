@@ -184,6 +184,41 @@ func (f *FeedbackHandler) createIssue(ctx context.Context, repo, title, body str
 	return &issue, nil
 }
 
+// CreateIssueComment posts a comment on an existing GitHub issue.
+func (f *FeedbackHandler) CreateIssueComment(ctx context.Context, repo string, issueNumber int, body string) error {
+	url := fmt.Sprintf("%s/repos/%s/issues/%d/comments", f.baseURL, repo, issueNumber)
+
+	// Sanitize the comment body before posting.
+	body = sanitizeString(body)
+
+	payload := map[string]string{"body": body}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal comment: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	f.setAuth(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := f.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("post comment: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("create comment returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	log.Printf("feedback: posted comment on %s#%d", repo, issueNumber)
+	return nil
+}
+
 // closeIssue closes a GitHub issue with a comment.
 func (f *FeedbackHandler) closeIssue(ctx context.Context, repo string, issueNumber int, comment string) error {
 	// Add comment.

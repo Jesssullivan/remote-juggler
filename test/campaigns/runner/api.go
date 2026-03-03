@@ -26,6 +26,9 @@ type APIServer struct {
 	// webhook payloads. When empty, HMAC validation is skipped.
 	WebhookSecret string
 
+	// threadFetcher fetches GitHub issue threads for conversation dispatch.
+	threadFetcher *ThreadFetcher
+
 	mu          sync.Mutex
 	lastResults map[string]*CampaignResult
 }
@@ -215,6 +218,19 @@ func (a *APIServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if this is an issue_comment event (conversation dispatch).
+	ghEvent := r.Header.Get("X-GitHub-Event")
+	if ghEvent == "issue_comment" {
+		log.Printf("api: received issue_comment webhook")
+		a.handleIssueComment(body)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"triggered": []string{"conversation"},
+			"count":     1,
+		})
+		return
+	}
+
 	var payload WebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		http.Error(w, "parse: "+err.Error(), http.StatusBadRequest)
@@ -223,8 +239,8 @@ func (a *APIServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if payload.Event == "" {
 		// Try to infer from GitHub event header.
-		if gh := r.Header.Get("X-GitHub-Event"); gh != "" {
-			payload.Event = gh
+		if ghEvent != "" {
+			payload.Event = ghEvent
 		}
 	}
 

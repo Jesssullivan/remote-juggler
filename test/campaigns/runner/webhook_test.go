@@ -341,6 +341,62 @@ func TestPathFiltersMatch(t *testing.T) {
 	}
 }
 
+func TestWebhookIssueComment(t *testing.T) {
+	api := newWebhookTestAPI()
+
+	// Build a GitHub issue_comment webhook payload.
+	event := IssueCommentEvent{
+		Action: "created",
+	}
+	event.Comment.Body = "@rj-agent-bot what tools do you have?"
+	event.Comment.User.Login = "user1"
+	event.Issue.Number = 99
+	event.Repository.FullName = "tinyland-inc/remote-juggler"
+
+	body, _ := json.Marshal(event)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-GitHub-Event", "issue_comment")
+	w := httptest.NewRecorder()
+	api.handleWebhook(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	triggered := resp["triggered"].([]any)
+	if len(triggered) != 1 || triggered[0].(string) != "conversation" {
+		t.Errorf("expected [conversation], got %v", triggered)
+	}
+}
+
+func TestWebhookIssueCommentBotIgnored(t *testing.T) {
+	api := newWebhookTestAPI()
+
+	event := IssueCommentEvent{
+		Action: "created",
+	}
+	event.Comment.Body = "I found the answer."
+	event.Comment.User.Login = "rj-agent-bot[bot]"
+	event.Issue.Number = 99
+	event.Repository.FullName = "tinyland-inc/remote-juggler"
+
+	body, _ := json.Marshal(event)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-GitHub-Event", "issue_comment")
+	w := httptest.NewRecorder()
+	api.handleWebhook(w, req)
+
+	// Should still return 200 (the webhook was handled, just not dispatched).
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+}
+
 func TestValidateHMAC(t *testing.T) {
 	secret := "mysecret"
 	body := []byte("hello world")
