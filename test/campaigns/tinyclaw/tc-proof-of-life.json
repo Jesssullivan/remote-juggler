@@ -16,7 +16,8 @@
     "Write a __memory__ reflection about performance patterns and optimization opportunities for future campaigns"
   ],
   "tools": [
-    "github_fetch"
+    "github_fetch",
+    "juggler_setec_put"
   ],
   "targets": [
     {
