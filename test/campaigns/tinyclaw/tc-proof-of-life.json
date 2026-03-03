@@ -13,10 +13,12 @@
     "Report function definitions from both files, comparing file sizes and processing efficiency",
     "Test error handling by attempting to fetch a non-existent file and document graceful failure behavior",
     "Calculate tool call efficiency metrics (response time patterns, data throughput)",
+    "Store performance metrics in setec key 'campaigns/tc-proof-of-life/history' for trend analysis",
     "Write a __memory__ reflection about performance patterns and optimization opportunities for future campaigns"
   ],
   "tools": [
-    "github_fetch"
+    "github_fetch",
+    "juggler_setec_put"
   ],
   "targets": [
     {
