@@ -1069,8 +1069,18 @@ prototype module Manifest {
     const timestamp = nowISO8601();
 
     try {
-      var f = open(logPath, ioMode.cwa);  // append mode
+      // Append by reading existing content and rewriting
+      var existing = "";
+      if exists(logPath) {
+        var rf = open(logPath, ioMode.r);
+        var rr = rf.reader(locking=false);
+        rr.readAll(existing);
+        rr.close();
+        rf.close();
+      }
+      var f = open(logPath, ioMode.cw);
       var w = f.writer(locking=false);
+      w.write(existing);
       w.writeln(timestamp + " | " + action + " | " + canonicalName +
                 " | " + host + " | " + details);
       w.close();
