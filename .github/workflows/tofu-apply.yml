@@ -69,6 +69,7 @@ jobs:
           TF_VAR_github_token: ${{ secrets.RJ_GITHUB_TOKEN }}
           TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           TF_VAR_github_app_private_key: ${{ secrets.RJ_APP_PRIVATE_KEY }}
+          TF_VAR_brave_api_key: ${{ secrets.BRAVE_API_KEY }}
           # Skip Setec seed job in CI — secrets are already in Setec from
           # initial manual apply. The seed job pod can't reliably reach Setec
           # during rolling restarts, causing 2m timeout failures.
