@@ -8,13 +8,14 @@
     "event": "manual"
   },
   "process": [
-    "Step 1: Call juggler_setec_get with name='remotejuggler/campaigns/tc-proof-of-life/history' to read your performance history (JSON array of past runs with status, tool_calls, duration_s)",
-    "Step 2: Analyze the history — look at success rate, average tool calls, average duration. Identify ONE weakness or improvement opportunity",
-    "Step 3: Call github_fetch to read the current campaign JSON at path=test/campaigns/tinyclaw/tc-proof-of-life.json from owner=tinyland-inc repo=remote-juggler",
-    "Step 4: Decide on a specific improvement to the campaign (e.g., add a process step, adjust description, add a tool). Create a modified version of the JSON",
-    "Step 5: Call github_patch_file ONCE to write the modified campaign JSON to a new branch. Use branch=tc-self-improve-patch, path=test/campaigns/tinyclaw/tc-proof-of-life.json, message='chore: improve tc-proof-of-life campaign'",
-    "Step 6: Call github_create_pr with head=tc-self-improve-patch, base=main, title='chore: agent self-improvement of tc-proof-of-life', body describing what you changed and why",
-    "Step 7: Report your change and reasoning in __findings__. Write a __memory__ reflection about what you changed"
+    "Step 1: Call juggler_setec_get with name='remotejuggler/campaigns/tc-proof-of-life/history' to read your performance history. IMPORTANT: The name MUST start with 'remotejuggler/' — do NOT omit this prefix. The result is a JSON array of past runs with status, tool_calls, duration_s. If 404, proceed anyway with no history.",
+    "Step 2: Analyze the history — look at success rate, average tool calls, average duration. Identify ONE weakness or improvement opportunity.",
+    "Step 3: Call github_fetch with owner='tinyland-inc', repo='remote-juggler', path='test/campaigns/tinyclaw/tc-proof-of-life.json' to read the current campaign JSON.",
+    "Step 4: Decide on a specific improvement to the campaign (e.g., add a process step, adjust description, add a tool). Prepare the old_content and new_content strings for a targeted patch.",
+    "Step 5: Call github_create_branch with owner='tinyland-inc', repo='remote-juggler', branch_name='tc-self-improve-patch', base='main'. This MUST be done BEFORE github_patch_file. If the branch already exists, that is OK.",
+    "Step 6: Call github_patch_file ONCE with owner='tinyland-inc', repo='remote-juggler', path='test/campaigns/tinyclaw/tc-proof-of-life.json', branch='tc-self-improve-patch', old_content=<exact text to replace>, new_content=<replacement text>, message='chore: improve tc-proof-of-life campaign'. The old_content must exactly match text in the file.",
+    "Step 7: Call github_create_pr with owner='tinyland-inc', repo='remote-juggler', head='tc-self-improve-patch', base='main', title='chore: agent self-improvement of tc-proof-of-life', body=<description of what you changed and why>.",
+    "Step 8: Report your change and reasoning in __findings__. Write a __memory__ reflection about what you changed."
   ],
   "tools": [
     "juggler_setec_get",
