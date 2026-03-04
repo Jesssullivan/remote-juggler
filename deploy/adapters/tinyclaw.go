@@ -628,6 +628,7 @@ func (b *TinyclawBackend) dispatchAgentic(campaign json.RawMessage, runID string
 			"tool_calls":     totalToolCalls,
 			"iterations":     len(messages) / 2,
 			"findings_count": len(findings),
+			"response_text":  text,
 		},
 	}, nil
 }
