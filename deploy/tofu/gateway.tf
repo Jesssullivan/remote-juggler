@@ -202,3 +202,51 @@ resource "kubernetes_service" "gateway_internal" {
     type = "ClusterIP"
   }
 }
+
+# =============================================================================
+# Public webhook ingress — receives GitHub webhooks from the internet.
+# No OAuth2 auth: HMAC-SHA256 signature validation happens in gateway code.
+# =============================================================================
+resource "kubernetes_ingress_v1" "gateway_webhook" {
+  metadata {
+    name      = "rj-gateway-webhook"
+    namespace = kubernetes_namespace.main.metadata[0].name
+    labels    = merge(local.labels, { app = "rj-gateway" })
+
+    annotations = {
+      "cert-manager.io/cluster-issuer"                 = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/ssl-redirect"       = "true"
+      "nginx.ingress.kubernetes.io/proxy-body-size"    = "1m"
+      "nginx.ingress.kubernetes.io/proxy-read-timeout" = "30"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = ["webhook.fuzzy-dev.tinyland.dev"]
+      secret_name = "rj-webhook-tls"
+    }
+
+    rule {
+      host = "webhook.fuzzy-dev.tinyland.dev"
+
+      http {
+        path {
+          path      = "/github/webhook"
+          path_type = "Exact"
+
+          backend {
+            service {
+              name = kubernetes_service.gateway_internal.metadata[0].name
+              port {
+                number = 8080
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
