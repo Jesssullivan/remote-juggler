@@ -166,6 +166,50 @@ func TestSanitizeResult(t *testing.T) {
 	}
 }
 
+func TestSanitizeResult_ResponseTextPreserved(t *testing.T) {
+	// response_text is agent prose for GitHub comments — it should use
+	// pattern-based sanitization only, not entropy-based redaction.
+	// Natural language with code blocks and tool names exceeds entropy 4.5.
+	responseText := "Here are some of the tools I have available:\n\n" +
+		"- `juggler_resolve_composite` - resolves secrets from multiple backends\n" +
+		"- `github_create_pull_request` - creates PRs on GitHub repositories\n" +
+		"- `juggler_setec_get` / `juggler_setec_put` - read/write Setec secrets\n" +
+		"- `github_fetch` - fetches file contents from GitHub\n\n" +
+		"I can use these tools to help with infrastructure, code review, and more."
+
+	result := &CampaignResult{
+		KPIs: map[string]any{
+			"response_text": responseText,
+			"tool_calls":    3,
+		},
+	}
+
+	sanitizeResult(result)
+
+	got, ok := result.KPIs["response_text"].(string)
+	if !ok {
+		t.Fatalf("response_text KPI type changed to %T", result.KPIs["response_text"])
+	}
+	if got == "[REDACTED]" {
+		t.Error("response_text was entropy-redacted — should use pattern-based sanitization only")
+	}
+	if !strings.Contains(got, "juggler_resolve_composite") {
+		t.Errorf("response_text tool names were stripped: %s", got)
+	}
+
+	// But actual secrets IN the response text should still be caught.
+	resultWithSecret := &CampaignResult{
+		KPIs: map[string]any{
+			"response_text": "The API key is sk-ant-api03-verysecretkey, don't share it.",
+		},
+	}
+	sanitizeResult(resultWithSecret)
+	got2 := resultWithSecret.KPIs["response_text"].(string)
+	if strings.Contains(got2, "sk-ant-") {
+		t.Errorf("response_text should still redact known secret patterns: %s", got2)
+	}
+}
+
 func TestFormatTitle(t *testing.T) {
 	p := &Publisher{}
 	campaign := &Campaign{Name: "Gateway Health Check"}

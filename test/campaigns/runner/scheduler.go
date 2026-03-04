@@ -278,7 +278,16 @@ func sanitizeResult(result *CampaignResult) {
 		result.ToolTrace[i].Summary = sanitizeString(result.ToolTrace[i].Summary)
 	}
 	for k, v := range result.KPIs {
-		result.KPIs[k] = sanitizeValue(v)
+		if k == "response_text" {
+			// response_text is agent prose for GitHub comments — use pattern-based
+			// sanitization only, not entropy-based (natural language with code
+			// blocks and tool names exceeds the entropy threshold).
+			if s, ok := v.(string); ok {
+				result.KPIs[k] = sanitizeString(s)
+			}
+		} else {
+			result.KPIs[k] = sanitizeValue(v)
+		}
 	}
 }
 
