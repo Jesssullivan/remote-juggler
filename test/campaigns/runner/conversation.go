@@ -206,7 +206,7 @@ func buildConversationResponse(result *CampaignResult) string {
 	// If the agent returned text in KPIs (the agentic dispatch stores response_text).
 	if result.KPIs != nil {
 		if text, ok := result.KPIs["response_text"].(string); ok && text != "" {
-			return text
+			return stripMarkers(text)
 		}
 	}
 
@@ -236,6 +236,33 @@ func buildConversationResponse(result *CampaignResult) string {
 	}
 
 	return ""
+}
+
+// stripMarkers removes agent-internal marker blocks (__memory__, __findings__,
+// __skill__) from text before posting as a GitHub comment. These markers are
+// used for structured data extraction by the adapter/runner, not for display.
+func stripMarkers(text string) string {
+	pairs := [][2]string{
+		{"__memory__", "__end_memory__"},
+		{"__findings__", "__end_findings__"},
+		{"__skill__", "__end_skill__"},
+	}
+	for _, pair := range pairs {
+		for {
+			start := strings.Index(text, pair[0])
+			if start < 0 {
+				break
+			}
+			end := strings.Index(text[start:], pair[1])
+			if end < 0 {
+				// Unclosed marker — strip from start marker to end of text.
+				text = strings.TrimSpace(text[:start])
+				break
+			}
+			text = text[:start] + text[start+end+len(pair[1]):]
+		}
+	}
+	return strings.TrimSpace(text)
 }
 
 // sanitizeID replaces characters that aren't valid in Setec keys or campaign IDs.

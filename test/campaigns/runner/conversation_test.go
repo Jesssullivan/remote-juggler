@@ -102,6 +102,72 @@ func TestBuildConversationResponse_FromKPIs(t *testing.T) {
 	}
 }
 
+func TestBuildConversationResponse_StripsMarkers(t *testing.T) {
+	result := &CampaignResult{
+		Status:    "success",
+		ToolCalls: 0,
+		KPIs: map[string]any{
+			"response_text": "Here are my tools:\n- tool1\n- tool2\n\n__memory__\nDate: 2026-03-04\nWhat I did: listed tools\n__end_memory__\n",
+		},
+	}
+
+	response := buildConversationResponse(result)
+	if strings.Contains(response, "__memory__") {
+		t.Errorf("response still contains __memory__ marker: %s", response)
+	}
+	if !strings.Contains(response, "tool1") {
+		t.Error("response should contain tool1")
+	}
+}
+
+func TestStripMarkers(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no markers",
+			input: "Hello, world!",
+			want:  "Hello, world!",
+		},
+		{
+			name:  "memory marker",
+			input: "Main text\n\n__memory__\nreflection\n__end_memory__",
+			want:  "Main text",
+		},
+		{
+			name:  "findings marker",
+			input: "Response\n__findings__\n{\"title\":\"x\"}\n__end_findings__\nMore text",
+			want:  "Response\n\nMore text",
+		},
+		{
+			name:  "skill marker",
+			input: "Text\n__skill__\n### Skill: test\n__end_skill__",
+			want:  "Text",
+		},
+		{
+			name:  "multiple markers",
+			input: "Answer\n\n__memory__\nstuff\n__end_memory__\n\n__skill__\nskill\n__end_skill__",
+			want:  "Answer",
+		},
+		{
+			name:  "unclosed marker",
+			input: "Answer\n\n__memory__\nstuff without end",
+			want:  "Answer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripMarkers(tt.input)
+			if got != tt.want {
+				t.Errorf("stripMarkers() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBuildConversationResponse_FallbackToolSummary(t *testing.T) {
 	result := &CampaignResult{
 		Status:    "success",
