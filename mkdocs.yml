@@ -3,8 +3,8 @@ site_url: https://tinyland-inc.github.io/remote-juggler
 site_description: Backend-agnostic git identity management with MCP/ACP agent protocol support
 site_author: Jess Sullivan
 
-repo_url: https://github.com/tinyland-inc/remote-juggler
-repo_name: tinyland-inc/remote-juggler
+repo_url: https://github.com/Jesssullivan/remote-juggler
+repo_name: Jesssullivan/remote-juggler
 edit_uri: edit/main/docs/
 
 theme:
@@ -130,6 +130,6 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/tinyland-inc/remote-juggler
+      link: https://github.com/Jesssullivan/remote-juggler
     - icon: fontawesome/brands/gitlab
       link: https://gitlab.com/tinyland/projects/remote-juggler

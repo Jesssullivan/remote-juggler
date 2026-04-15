@@ -1,10 +1,10 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions & Discussion
-    url: https://github.com/tinyland-inc/remote-juggler/discussions
+    url: https://github.com/Jesssullivan/remote-juggler/discussions
     about: Ask questions, share ideas, or discuss RemoteJuggler
   - name: Agent Reports
-    url: https://github.com/tinyland-inc/remote-juggler/discussions/categories/agent-reports
+    url: https://github.com/Jesssullivan/remote-juggler/discussions/categories/agent-reports
     about: View automated agent campaign reports
   - name: Documentation
     url: https://tinyland-inc.github.io/remote-juggler/

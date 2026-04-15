@@ -1,11 +1,16 @@
 # RemoteJuggler
 
 [![npm](https://img.shields.io/npm/v/@tummycrypt/remote-juggler/beta?color=CB3837)](https://www.npmjs.com/package/@tummycrypt/remote-juggler)
-[![GitHub release](https://img.shields.io/github/v/release/tinyland-inc/remote-juggler?include_prereleases)](https://github.com/tinyland-inc/remote-juggler/releases/latest)
-[![CI](https://github.com/tinyland-inc/remote-juggler/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tinyland-inc/remote-juggler/actions/workflows/ci.yml)
-[![Release](https://github.com/tinyland-inc/remote-juggler/actions/workflows/release.yml/badge.svg)](https://github.com/tinyland-inc/remote-juggler/actions/workflows/release.yml)
-[![Docker](https://img.shields.io/badge/ghcr.io-remote--juggler-blue?logo=docker)](https://github.com/tinyland-inc/remote-juggler/pkgs/container/remote-juggler)
+[![GitHub release](https://img.shields.io/github/v/release/Jesssullivan/remote-juggler?include_prereleases)](https://github.com/Jesssullivan/remote-juggler/releases/latest)
+[![CI](https://github.com/Jesssullivan/remote-juggler/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jesssullivan/remote-juggler/actions/workflows/ci.yml)
+[![Release](https://github.com/Jesssullivan/remote-juggler/actions/workflows/release.yml/badge.svg)](https://github.com/Jesssullivan/remote-juggler/actions/workflows/release.yml)
+[![Docker](https://img.shields.io/badge/ghcr.io-remote--juggler-blue?logo=docker)](https://github.com/users/Jesssullivan/packages/container/package/remote-juggler)
 [![License: Zlib](https://img.shields.io/badge/license-Zlib-blue)](LICENSE)
+
+> Canonical GitHub home: [`Jesssullivan/remote-juggler`](https://github.com/Jesssullivan/remote-juggler)
+>
+> `tinyland-inc/remote-juggler` remains a downstream collaboration fork and should
+> not be treated as the primary issue, release, or install surface.
 
 *An agent-first identity management utility*
 
@@ -34,7 +39,7 @@ Written primarily in [Chapel](https://chapel-lang.org/) with a great deal of car
 Install RemoteJuggler with the automated installer:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash
 ```
 
 Or via npm (all platforms):
@@ -46,7 +51,7 @@ npx @tummycrypt/remote-juggler@latest --version
 Or via Nix:
 
 ```bash
-nix profile install github:tinyland-inc/remote-juggler
+nix profile install github:Jesssullivan/remote-juggler
 ```
 
 For other installation methods (.deb, .rpm, binary downloads, building from source), see the **[Installation Guide](docs/getting-started/installation.md)**.
@@ -56,28 +61,28 @@ For other installation methods (.deb, .rpm, binary downloads, building from sour
 
 ### Latest Release
 
-**v2.3.0** | 2026-02-24 | [Release Notes](https://github.com/tinyland-inc/remote-juggler/releases/tag/v2.3.0) | [All Releases](https://github.com/tinyland-inc/remote-juggler/releases)
+**v2.3.0** | 2026-02-24 | [Release Notes](https://github.com/Jesssullivan/remote-juggler/releases/tag/v2.3.0) | [All Releases](https://github.com/Jesssullivan/remote-juggler/releases)
 
 ### Binary Downloads
 
 | Platform | CLI | GTK GUI | Tray |
 |----------|-----|---------|------|
-| Linux x86_64 | [remote-juggler-linux-amd64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-linux-amd64) (4.7MB) | [remote-juggler-gui-linux-amd64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-linux-amd64) (874KB) | [remote-juggler-tray-linux-amd64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-linux-amd64) (3.7MB) |
-| Linux ARM64 | [remote-juggler-linux-arm64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-linux-arm64) (4.3MB) | [remote-juggler-gui-linux-arm64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-linux-arm64) (838KB) | [remote-juggler-tray-linux-arm64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-linux-arm64) (3.7MB) |
-| macOS ARM64 | [remote-juggler-darwin-arm64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-darwin-arm64) (3.5MB) | -- | [remote-juggler-tray-darwin-arm64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-darwin-arm64) (493KB) |
-| macOS x86_64 | [remote-juggler-darwin-amd64](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-darwin-amd64) (4.1MB) | -- | -- |
+| Linux x86_64 | [remote-juggler-linux-amd64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-linux-amd64) (4.7MB) | [remote-juggler-gui-linux-amd64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-linux-amd64) (874KB) | [remote-juggler-tray-linux-amd64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-linux-amd64) (3.7MB) |
+| Linux ARM64 | [remote-juggler-linux-arm64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-linux-arm64) (4.3MB) | [remote-juggler-gui-linux-arm64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-linux-arm64) (838KB) | [remote-juggler-tray-linux-arm64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-linux-arm64) (3.7MB) |
+| macOS ARM64 | [remote-juggler-darwin-arm64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-darwin-arm64) (3.5MB) | -- | [remote-juggler-tray-darwin-arm64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-tray-darwin-arm64) (493KB) |
+| macOS x86_64 | [remote-juggler-darwin-amd64](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-darwin-amd64) (4.1MB) | -- | -- |
 
 ### Packages
 
 | Format | File | Size |
 |--------|------|------|
-| Debian/Ubuntu | [remote-juggler_2.3.0_amd64.deb](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler_2.3.0_amd64.deb) (1.8MB) |
-| RHEL/Fedora | [remote-juggler-2.3.0-1.x86_64.rpm](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-2.3.0-1.x86_64.rpm) (1.8MB) |
-| AppImage | [remote-juggler-gui-v2.3.0-x86_64.AppImage](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-v2.3.0-x86_64.AppImage) (613KB) |
-| Docker | `ghcr.io/tinyland-inc/remote-juggler:latest` |
+| Debian/Ubuntu | [remote-juggler_2.3.0_amd64.deb](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler_2.3.0_amd64.deb) (1.8MB) |
+| RHEL/Fedora | [remote-juggler-2.3.0-1.x86_64.rpm](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-2.3.0-1.x86_64.rpm) (1.8MB) |
+| AppImage | [remote-juggler-gui-v2.3.0-x86_64.AppImage](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/remote-juggler-gui-v2.3.0-x86_64.AppImage) (613KB) |
+| Docker | `ghcr.io/Jesssullivan/remote-juggler:latest` |
 | npm | `npx @tummycrypt/remote-juggler@latest` |
 | Homebrew | `brew install remote-juggler` |
-| Nix | `nix profile install github:tinyland-inc/remote-juggler` |
+| Nix | `nix profile install github:Jesssullivan/remote-juggler` |
 
 ### Platform Compatibility
 
@@ -109,7 +114,7 @@ fa3510158c40f18a4bffbe50ce53e23821bc5bab33ad1c6d979723f5d08e63af  remote-juggler
 6b3eeedb9d806faa9e8ea314a0efbb54f27fe0d34c1330d0d0a4a9830b8690c8  remote-juggler_2.3.0_amd64.deb
 ```
 
-Full checksums file: [SHA256SUMS.txt](https://github.com/tinyland-inc/remote-juggler/releases/download/v2.3.0/SHA256SUMS.txt)
+Full checksums file: [SHA256SUMS.txt](https://github.com/Jesssullivan/remote-juggler/releases/download/v2.3.0/SHA256SUMS.txt)
 
 </details>
 

@@ -325,7 +325,7 @@
 
           meta = with pkgs.lib; {
             description = "RemoteJuggler MCP gateway with tsnet, Setec, and additive credential resolution";
-            homepage = "https://github.com/tinyland-inc/remote-juggler";
+            homepage = "https://github.com/Jesssullivan/remote-juggler";
             license = licenses.zlib;
             platforms = platforms.unix;
           };

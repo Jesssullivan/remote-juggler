@@ -3,8 +3,8 @@
 # RemoteJuggler Universal Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash -s -- --version 2.2.0
+#   curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash -s -- --version 2.2.0
 #
 # Options:
 #   --version VERSION    Install specific version (default: latest)
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 # Configuration
-REPO_URL="https://github.com/tinyland-inc/remote-juggler"
+REPO_URL="https://github.com/Jesssullivan/remote-juggler"
 RELEASES_URL="${REPO_URL}/releases"
 GPG_KEY_URL="${REPO_URL}/raw/main/keys/release-signing.asc"
 DEFAULT_PREFIX="${HOME}/.local"
@@ -69,16 +69,16 @@ Options:
 
 Examples:
   # Install latest beta release
-  curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash
 
   # Install specific version
-  curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash -s -- --version 2.2.0
+  curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash -s -- --version 2.2.0
 
   # Install to /usr/local (requires sudo)
-  curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | sudo bash -s -- --prefix /usr/local
+  curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | sudo bash -s -- --prefix /usr/local
 
   # Uninstall
-  curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash -s -- --uninstall
+  curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash -s -- --uninstall
 EOF
 }
 
@@ -123,7 +123,7 @@ check_dependencies() {
 # Get latest version from GitHub API
 get_latest_version() {
     local channel="${1:-beta}"
-    local api_url="https://api.github.com/repos/tinyland-inc/remote-juggler/releases"
+    local api_url="https://api.github.com/repos/Jesssullivan/remote-juggler/releases"
 
     # Fetch releases
     local releases
@@ -403,7 +403,7 @@ main() {
         echo ""
         echo "Install via alternative methods:"
         echo "  npm install -g @tummycrypt/remote-juggler"
-        echo "  nix profile install github:tinyland-inc/remote-juggler  # Linux only"
+        echo "  nix profile install github:Jesssullivan/remote-juggler  # Linux only"
         echo ""
         echo "Or build from source (requires Chapel 2.7+):"
         echo "  git clone ${REPO_URL}.git && cd remote-juggler && just release"

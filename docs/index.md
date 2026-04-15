@@ -89,7 +89,7 @@ flowchart TB
 
 ```bash
 # Install via script
-curl -sSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash
 
 # Import existing SSH config
 remote-juggler config import
@@ -161,4 +161,4 @@ See [Architecture](architecture/index.md) for detailed module documentation.
 
 ## License
 
-zlib License. See [LICENSE](https://github.com/tinyland-inc/remote-juggler/blob/main/LICENSE) for details.
+zlib License. See [LICENSE](https://github.com/Jesssullivan/remote-juggler/blob/main/LICENSE) for details.
