@@ -40,7 +40,7 @@ RemoteJuggler is a multi-language project. Depending on what you're working on, 
 
 ```bash
 # Clone the repository
-git clone https://github.com/tinyland-inc/remote-juggler.git
+git clone https://github.com/Jesssullivan/remote-juggler.git
 cd remote-juggler
 
 # Option 1: Use Nix (recommended for reproducibility)
@@ -428,7 +428,7 @@ Contributors are recognized in:
 ## Questions?
 
 - **Documentation**: https://remote-juggler.dev/docs
-- **Issues**: https://github.com/tinyland-inc/remote-juggler/issues
-- **Discussions**: https://github.com/tinyland-inc/remote-juggler/discussions
+- **Issues**: https://github.com/Jesssullivan/remote-juggler/issues
+- **Discussions**: https://github.com/Jesssullivan/remote-juggler/discussions
 
 Thank you for contributing to RemoteJuggler!

@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.tinyland-inc/remote-juggler",
+  "name": "io.github.Jesssullivan/remote-juggler",
   "description": "Multi-provider git identity management with credential resolution, GPG signing, SSH identity switching, and KeePassXC credential authority. MCP server for AI agents to manage git identities across GitLab, GitHub, and Bitbucket.",
   "version": "2.3.0",
-  "repository": "https://github.com/tinyland-inc/remote-juggler",
+  "repository": "https://github.com/Jesssullivan/remote-juggler",
   "packages": [
     {
       "registryType": "npm",

@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-REPO="tinyland-inc/remote-juggler"
+REPO="Jesssullivan/remote-juggler"
 MARKER_START="<!-- ARTIFACT-TABLE:START -->"
 MARKER_END="<!-- ARTIFACT-TABLE:END -->"
 DOWNLOAD_BASE="https://github.com/${REPO}/releases/download"
@@ -144,12 +144,12 @@ generate_block() {
     local prerelease_label=""
     local npm_tag="latest"
     local docker_tag="latest"
-    local nix_ref="github:tinyland-inc/remote-juggler"
+    local nix_ref="github:Jesssullivan/remote-juggler"
     if [ "$PRERELEASE" = "true" ]; then
         prerelease_label=" (pre-release)"
         npm_tag="beta"
         docker_tag="${TAG}"
-        nix_ref="github:tinyland-inc/remote-juggler/${TAG}"
+        nix_ref="github:Jesssullivan/remote-juggler/${TAG}"
     fi
 
     cat <<BLOCK
@@ -175,7 +175,7 @@ generate_block() {
 | Debian/Ubuntu | $(download_cell_pattern "^remote-juggler_.*\\.deb$") |
 | RHEL/Fedora | $(download_cell_pattern "^remote-juggler-.*\\.rpm$") |
 | AppImage | $(download_cell_pattern "^remote-juggler-gui-.*\\.AppImage$") |
-| Docker | \`ghcr.io/tinyland-inc/remote-juggler:${docker_tag}\` |
+| Docker | \`ghcr.io/Jesssullivan/remote-juggler:${docker_tag}\` |
 | npm | \`npx @tummycrypt/remote-juggler@${npm_tag}\` |
 | Homebrew | \`brew install remote-juggler\` |
 | Nix | \`nix profile install ${nix_ref}\` |

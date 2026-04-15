@@ -7,7 +7,7 @@ Choose the installation method that matches your platform and workflow. For deta
 One-liner for Linux (amd64/arm64):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash
 ```
 
 This downloads the pre-built binary, verifies checksums, and installs to `~/.local/bin`.
@@ -32,14 +32,14 @@ npx @tummycrypt/remote-juggler@beta --mode=mcp
 
 ```bash
 # Try it without installing
-nix run github:tinyland-inc/remote-juggler -- --version
+nix run github:Jesssullivan/remote-juggler -- --version
 
 # Install to profile
-nix profile install github:tinyland-inc/remote-juggler
+nix profile install github:Jesssullivan/remote-juggler
 
 # Use in a flake
 # flake.nix inputs:
-#   inputs.remote-juggler.url = "github:tinyland-inc/remote-juggler";
+#   inputs.remote-juggler.url = "github:Jesssullivan/remote-juggler";
 ```
 
 ### Nix Home Manager
@@ -60,14 +60,14 @@ programs.remote-juggler = {
 
 ```bash
 # Download the specific release (no /latest — use the version tag)
-curl -LO https://github.com/tinyland-inc/remote-juggler/releases/download/v2.2.0/remote-juggler_2.2.0_amd64.deb
+curl -LO https://github.com/Jesssullivan/remote-juggler/releases/download/v2.2.0/remote-juggler_2.2.0_amd64.deb
 sudo dpkg -i remote-juggler_2.2.0_amd64.deb
 ```
 
 ## RHEL / Rocky / Fedora
 
 ```bash
-curl -LO https://github.com/tinyland-inc/remote-juggler/releases/download/v2.2.0/remote-juggler-2.2.0-1.x86_64.rpm
+curl -LO https://github.com/Jesssullivan/remote-juggler/releases/download/v2.2.0/remote-juggler-2.2.0-1.x86_64.rpm
 sudo rpm -i remote-juggler-2.2.0-1.x86_64.rpm
 ```
 
@@ -76,7 +76,7 @@ sudo rpm -i remote-juggler-2.2.0-1.x86_64.rpm
 Requires [Chapel](https://chapel-lang.org/) 2.7+:
 
 ```bash
-git clone https://github.com/tinyland-inc/remote-juggler.git
+git clone https://github.com/Jesssullivan/remote-juggler.git
 cd remote-juggler
 just release
 # Binary at target/release/remote_juggler

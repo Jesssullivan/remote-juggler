@@ -6,7 +6,7 @@
 #
 # Usage:
 #   ./scripts/configure-mcp-clients.sh
-#   curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/scripts/configure-mcp-clients.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/scripts/configure-mcp-clients.sh | sh
 
 set -eu
 
@@ -89,7 +89,7 @@ printf '========================================\n\n'
 # Check binary is available
 if ! command -v remote-juggler >/dev/null 2>&1; then
   printf '%bWarning:%b remote-juggler not found in PATH\n' "$YELLOW" "$NC"
-  printf '  Install first: curl -fsSL https://raw.githubusercontent.com/tinyland-inc/remote-juggler/main/install.sh | bash\n\n'
+  printf '  Install first: curl -fsSL https://raw.githubusercontent.com/Jesssullivan/remote-juggler/main/install.sh | bash\n\n'
 fi
 
 # Claude Code
